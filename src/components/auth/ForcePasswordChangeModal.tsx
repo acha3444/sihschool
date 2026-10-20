@@ -3,13 +3,18 @@ import { useAuth } from '../../context/AuthContext';
 import { Lock, KeyRound, AlertCircle, CheckCircle2, LogOut, ArrowRight } from 'lucide-react';
 
 export const ForcePasswordChangeModal: React.FC = () => {
-  const { profile, updatePassword, signOut } = useAuth();
+  const { user, profile, updatePassword, signOut } = useAuth();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Ce modal ne doit s'afficher QUE si l'utilisateur est connecté et doit changer son mot de passe
+  if (!user || !profile || !profile.doit_changer_mdp) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
