@@ -76,7 +76,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (currentUser) {
           const userProfile = await fetchProfile(currentUser.id);
-          setProfile(userProfile);
+          if (event === 'PASSWORD_RECOVERY') {
+            setProfile(userProfile ? { ...userProfile, doit_changer_mdp: true } : null);
+          } else {
+            setProfile(userProfile);
+          }
         } else {
           setProfile(null);
         }

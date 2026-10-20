@@ -38,6 +38,7 @@ import {
   FileText,
   UserPlus,
   BookOpen,
+  KeyRound,
 } from 'lucide-react';
 
 type AdminTab = 'aujourdhui' | 'eleves' | 'profs' | 'groupes' | 'paiements' | 'annonces';
@@ -114,6 +115,24 @@ export const AdminDashboard: React.FC = () => {
     prenom?: string;
   } | null>(null);
   const [copiedProfInvite, setCopiedProfInvite] = useState(false);
+
+  // Modal Réinitialisation mot de passe utilisateur
+  const [resetModalResult, setResetModalResult] = useState<{
+    tempPassword: string;
+    email: string;
+    prenom: string;
+    nom?: string;
+    telephone?: string;
+    role?: string;
+  } | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [copiedResetMsg, setCopiedResetMsg] = useState(false);
+
+  // Modal Réinitialisation Manuelle (n'importe quel compte ou e-mail)
+  const [isManualResetModalOpen, setIsManualResetModalOpen] = useState(false);
+  const [manualResetEmail, setManualResetEmail] = useState('');
+  const [manualResetSelectedUserId, setManualResetSelectedUserId] = useState('');
+  const [manualResetError, setManualResetError] = useState('');
 
   // Progression modifiable pour fiche élève
   const [editProgLecon, setEditProgLecon] = useState<number>(1);
@@ -525,6 +544,69 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // 5.5. RÉINITIALISATION DU MOT DE PASSE UTILISATEUR
+  const handleTriggerResetPassword = async (
+    target: { userId?: string; email?: string },
+    targetName?: string,
+    telephone?: string
+  ) => {
+    const label = targetName || target.email || 'cet utilisateur';
+    if (!confirm(`Voulez-vous réinitialiser le mot de passe de ${label} et générer un code temporaire ?`)) {
+      return;
+    }
+
+    setResetLoading(true);
+    setManualResetError('');
+    try {
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: target.userId,
+          email: target.email,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erreur lors de la réinitialisation.');
+      }
+
+      setResetModalResult({
+        tempPassword: data.tempPassword,
+        email: data.email,
+        prenom: data.prenom,
+        nom: data.nom,
+        telephone: telephone || data.telephone,
+        role: data.role,
+      });
+      setCopiedResetMsg(false);
+      setIsManualResetModalOpen(false);
+      setManualResetEmail('');
+      setManualResetSelectedUserId('');
+    } catch (err: any) {
+      if (isManualResetModalOpen) {
+        setManualResetError(err.message || 'Impossible de réinitialiser le mot de passe.');
+      } else {
+        alert('Erreur réinitialisation : ' + err.message);
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleCopyResetWhatsApp = () => {
+    if (!resetModalResult) return;
+    const origin = window.location.origin;
+    const msg = `Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école Sihscool :\n🌐 Lien de connexion : ${origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur Sihscool !`;
+    navigator.clipboard.writeText(msg);
+    setCopiedResetMsg(true);
+    setTimeout(() => setCopiedResetMsg(false), 3000);
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
   // 6. GROUPES : Création / Modification
   // ─────────────────────────────────────────────────────────────────────────────
@@ -698,6 +780,21 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setManualResetEmail('');
+                setManualResetSelectedUserId('');
+                setManualResetError('');
+                setIsManualResetModalOpen(true);
+              }}
+              className="btn-pill-white text-xs sm:text-sm py-2.5 px-3.5 flex items-center gap-1.5 border border-[#CDBDF2] shadow-xs min-h-[44px]"
+              title="Réinitialiser le mot de passe d'un élève, parent ou enseignant en cas d'oubli"
+            >
+              <KeyRound className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <span>Mot de passe oublié ?</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -1030,12 +1127,54 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   {selectedEleveDetail.parent && (
-                    <div className="p-3 rounded-2xl bg-white border border-[#CDBDF2] text-xs font-semibold">
-                      <span className="text-[#4A5487] block text-[10px] uppercase font-extrabold">Parent rattaché :</span>
-                      <p className="font-bold text-[#1B2A7A]">{selectedEleveDetail.parent.prenom} {selectedEleveDetail.parent.nom}</p>
-                      {selectedEleveDetail.parent.telephone && (
-                        <p className="text-[11px] text-[#4A5487]">{selectedEleveDetail.parent.telephone}</p>
-                      )}
+                    <div className="p-3 rounded-2xl bg-white border border-[#CDBDF2] text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[#4A5487] block text-[10px] uppercase font-extrabold">Parent rattaché :</span>
+                        <p className="font-bold text-[#1B2A7A]">{selectedEleveDetail.parent.prenom} {selectedEleveDetail.parent.nom}</p>
+                        {selectedEleveDetail.parent.telephone && (
+                          <p className="text-[11px] text-[#4A5487]">{selectedEleveDetail.parent.telephone}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={resetLoading}
+                        onClick={() =>
+                          handleTriggerResetPassword(
+                            { userId: selectedEleveDetail.parent!.id },
+                            `Parent ${selectedEleveDetail.parent!.prenom} ${selectedEleveDetail.parent!.nom}`,
+                            selectedEleveDetail.parent!.telephone || undefined
+                          )
+                        }
+                        className="btn-pill-white !min-h-[34px] !text-[11px] !py-1 !px-3 inline-flex items-center gap-1.5 text-[#1B2A7A] font-bold border border-[#CDBDF2] hover:border-[#FFE15C] shrink-0 self-start sm:self-center"
+                        title="Générer un mot de passe temporaire pour le compte parent"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-[#1B2A7A]" />
+                        <span>Réinitialiser mot de passe parent</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedEleveDetail.type === 'adulte' && (selectedEleveDetail.compte_id || selectedEleveDetail.parent_id) && (
+                    <div className="p-3 rounded-2xl bg-white border border-[#CDBDF2] text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[#4A5487] block text-[10px] uppercase font-extrabold">Compte élève adulte :</span>
+                        <p className="font-bold text-[#1B2A7A]">{selectedEleveDetail.prenom} {selectedEleveDetail.nom}</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={resetLoading}
+                        onClick={() =>
+                          handleTriggerResetPassword(
+                            { userId: (selectedEleveDetail.compte_id || selectedEleveDetail.parent_id)! },
+                            `Élève ${selectedEleveDetail.prenom} ${selectedEleveDetail.nom}`
+                          )
+                        }
+                        className="btn-pill-white !min-h-[34px] !text-[11px] !py-1 !px-3 inline-flex items-center gap-1.5 text-[#1B2A7A] font-bold border border-[#CDBDF2] hover:border-[#FFE15C] shrink-0 self-start sm:self-center"
+                        title="Générer un mot de passe temporaire pour le compte de l'élève"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-[#1B2A7A]" />
+                        <span>Réinitialiser mot de passe élève</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1270,6 +1409,26 @@ export const AdminDashboard: React.FC = () => {
                           </span>
                         )}
                       </div>
+                    </div>
+
+                    {/* Action Réinitialisation mot de passe */}
+                    <div className="pt-3 border-t border-[#CDBDF2]/30 flex items-center justify-between">
+                      <button
+                        type="button"
+                        disabled={resetLoading}
+                        onClick={() =>
+                          handleTriggerResetPassword(
+                            { userId: prof.id },
+                            `Enseignante ${prof.prenom} ${prof.nom}`,
+                            prof.telephone || undefined
+                          )
+                        }
+                        className="btn-pill-white !min-h-[34px] !text-[11px] !py-1 !px-3 inline-flex items-center gap-1.5 hover:border-[#FFE15C] text-[#1B2A7A] font-bold"
+                        title="Générer un mot de passe temporaire pour cette enseignante"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-[#1B2A7A]" />
+                        <span>Réinitialiser mot de passe</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2251,6 +2410,232 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────
+          MODAL : RÉINITIALISER UN MOT DE PASSE EN 1 CLIC (OUBLI DE MDP)
+      ───────────────────────────────────────────────────────────────────── */}
+      {isManualResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B2A7A]/50 backdrop-blur-sm animate-fadeIn font-baloo">
+          <div className="w-full max-w-md cloud-card p-6 border-4 border-white shadow-cloud-pop space-y-4">
+            <div className="flex items-center justify-between border-b border-[#CDBDF2]/40 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-[#FFE15C] text-[#1B2A7A] flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-[#1B2A7A]">Réinitialiser un mot de passe</h3>
+                  <p className="text-[11px] text-[#4A5487] font-semibold">Pour n'importe qui : élève, parent, prof ou admin</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManualResetModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white border border-[#CDBDF2] flex items-center justify-center text-[#4A5487] hover:text-[#1B2A7A]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {manualResetError && (
+              <div className="p-3 rounded-2xl bg-[#FFF0D4] border border-[#FFE15C] text-[#E5483D] text-xs flex items-center gap-2 font-bold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{manualResetError}</span>
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (manualResetSelectedUserId) {
+                  const targetUser =
+                    profsProfiles.find((p) => p.id === manualResetSelectedUserId) ||
+                    parentsProfiles.find((p) => p.id === manualResetSelectedUserId);
+                  handleTriggerResetPassword(
+                    { userId: manualResetSelectedUserId },
+                    targetUser ? `${targetUser.prenom} ${targetUser.nom}` : undefined,
+                    targetUser?.telephone || undefined
+                  );
+                } else if (manualResetEmail.trim()) {
+                  handleTriggerResetPassword({ email: manualResetEmail.trim().toLowerCase() });
+                }
+              }}
+              className="space-y-4 text-xs font-baloo"
+            >
+              {/* Option A : Choisir dans la liste des comptes existants */}
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-[#1B2A7A] block">
+                  Option 1 : Sélectionner un utilisateur dans la liste
+                </label>
+                <select
+                  value={manualResetSelectedUserId}
+                  onChange={(e) => {
+                    setManualResetSelectedUserId(e.target.value);
+                    if (e.target.value) setManualResetEmail('');
+                  }}
+                  className="w-full py-2.5 px-3 rounded-2xl bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                >
+                  <option value="">-- Choisir un compte dans l'école --</option>
+                  <optgroup label="👩‍🏫 Enseignantes">
+                    {profsProfiles.map((prof) => (
+                      <option key={prof.id} value={prof.id}>
+                        {prof.prenom} {prof.nom} (Professeure)
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="👨‍👩‍👦 Parents d'élèves">
+                    {parentsProfiles.map((parent) => (
+                      <option key={parent.id} value={parent.id}>
+                        {parent.prenom} {parent.nom} {parent.telephone ? `(${parent.telephone})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-[#CDBDF2]/50"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-[#4A5487] font-black uppercase">OU</span>
+                <div className="flex-grow border-t border-[#CDBDF2]/50"></div>
+              </div>
+
+              {/* Option B : Taper directement l'e-mail du compte */}
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-[#1B2A7A] block">
+                  Option 2 : Saisir directement l'adresse e-mail du compte
+                </label>
+                <input
+                  type="email"
+                  value={manualResetEmail}
+                  onChange={(e) => {
+                    setManualResetEmail(e.target.value);
+                    if (e.target.value) setManualResetSelectedUserId('');
+                  }}
+                  placeholder="exemple@gmail.com"
+                  className="w-full py-2.5 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] text-[11px] text-[#8C6D00] leading-relaxed">
+                💡 <strong>Comment ça marche ?</strong> Un code temporaire sécurisé (ex: <code>SIH-849201</code>) sera généré. Vous pourrez copier le message WhatsApp tout prêt pour la personne. Dès sa connexion, elle choisira son propre mot de passe.
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsManualResetModalOpen(false)}
+                  className="flex-1 btn-pill-white !min-h-[42px] !text-xs"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading || (!manualResetSelectedUserId && !manualResetEmail.trim())}
+                  className="flex-1 btn-pill-sun !min-h-[42px] !text-xs font-bold disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                >
+                  <KeyRound className="w-4 h-4 text-[#1B2A7A]" />
+                  <span>{resetLoading ? 'Génération...' : 'Réinitialiser'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────
+          MODAL : RÉSULTAT RÉINITIALISATION MOT DE PASSE (MESSAGE WHATSAPP)
+      ───────────────────────────────────────────────────────────────────── */}
+      {resetModalResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B2A7A]/50 backdrop-blur-sm animate-fadeIn font-baloo">
+          <div className="w-full max-w-lg cloud-card p-6 border-4 border-white shadow-cloud-pop space-y-4">
+            <div className="flex items-center justify-between border-b border-[#CDBDF2]/40 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-2xl bg-[#EAF7E8] text-[#2B7A00] flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-[#1B2A7A]">Mot de passe réinitialisé !</h3>
+                  <p className="text-xs text-[#4A5487] font-semibold">
+                    Compte : {resetModalResult.prenom} {resetModalResult.nom || ''} ({resetModalResult.email})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetModalResult(null)}
+                className="w-8 h-8 rounded-full bg-white border border-[#CDBDF2] flex items-center justify-center text-[#4A5487] hover:text-[#1B2A7A]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Carte des identifiants */}
+            <div className="p-4 rounded-2xl bg-white border-2 border-[#FFE15C] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-[#4A5487] uppercase tracking-wide">Identifiant (E-mail) :</span>
+                <span className="text-xs font-bold text-[#1B2A7A] font-mono">{resetModalResult.email}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-[#CDBDF2]/30">
+                <span className="text-xs font-extrabold text-[#4A5487] uppercase tracking-wide">Nouveau mot de passe temporaire :</span>
+                <span className="px-3 py-1 rounded-full bg-[#FFE15C] text-[#1B2A7A] font-black text-sm font-mono tracking-wider shadow-xs">
+                  {resetModalResult.tempPassword}
+                </span>
+              </div>
+            </div>
+
+            {/* Aperçu du message WhatsApp */}
+            <div className="space-y-1">
+              <label className="text-xs font-extrabold text-[#1B2A7A] block">
+                Message à transmettre à {resetModalResult.prenom} :
+              </label>
+              <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] text-xs text-[#1B2A7A] font-mono whitespace-pre-wrap leading-relaxed select-all">
+                {`Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école Sihscool :\n🌐 Lien de connexion : ${window.location.origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur Sihscool !`}
+              </div>
+            </div>
+
+            {/* Actions rapides */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleCopyResetWhatsApp}
+                className="flex-1 btn-pill-sun !min-h-[44px] !text-xs font-extrabold inline-flex items-center justify-center gap-2 shadow-sm"
+              >
+                {copiedResetMsg ? (
+                  <>
+                    <CheckCheck className="w-4 h-4 text-[#1B2A7A]" />
+                    <span>Message copié !</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 text-[#1B2A7A]" />
+                    <span>Copier le message WhatsApp</span>
+                  </>
+                )}
+              </button>
+
+              {resetModalResult.telephone && (
+                <a
+                  href={`https://wa.me/${resetModalResult.telephone.replace(/\s+/g, '').replace('+', '')}?text=${encodeURIComponent(
+                    `Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école Sihscool :\n🌐 Lien de connexion : ${window.location.origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur Sihscool !`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-pill-white !min-h-[44px] !text-xs font-extrabold inline-flex items-center justify-center gap-1.5 border border-[#1E7E44] text-[#1E7E44] hover:bg-[#EAFBF1]"
+                >
+                  <span>💬 Ouvrir WhatsApp</span>
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setResetModalResult(null)}
+                className="btn-pill-white !min-h-[44px] !text-xs px-4"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       )}
