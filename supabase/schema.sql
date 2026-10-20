@@ -543,6 +543,24 @@ create policy "Prof lit les annonces de ses groupes ou generales"
     )
   );
 
+create policy "Prof publie annonces pour ses groupes"
+  on public.annonces
+  for insert
+  with check (
+    public.is_prof()
+    and groupe_id is not null
+    and public.is_prof_of_groupe(groupe_id)
+  );
+
+create policy "Prof supprime annonces de ses groupes"
+  on public.annonces
+  for delete
+  using (
+    public.is_prof()
+    and groupe_id is not null
+    and public.is_prof_of_groupe(groupe_id)
+  );
+
 create policy "Parent lit les annonces generales ou de ses enfants"
   on public.annonces
   for select
