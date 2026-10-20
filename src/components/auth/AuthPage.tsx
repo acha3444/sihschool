@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Info,
   ShieldCheck,
+  Smartphone,
 } from 'lucide-react';
 import { AVATAR_OPTIONS, AvatarDisplay } from '../common/AvatarDisplay';
 import { Sunburst, FloatingCloud } from '../common/Sunburst';
@@ -615,6 +616,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
       {/* Footer avec liens de conformité légale & RGPD */}
       <footer className="max-w-4xl mx-auto w-full text-center py-4 border-t border-[#CDBDF2]/40 text-xs text-[#4A5487] font-baloo relative z-10 space-y-2.5">
         <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('sihscool-open-install'))}
+            className="text-[#1B2A7A] hover:bg-[#FFE15C] flex items-center gap-1.5 font-bold text-[11px] bg-[#FFFFFF] px-3.5 py-1.5 rounded-full border border-[#CDBDF2] shadow-sm transition-all"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+            <span>Installer l’application</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {

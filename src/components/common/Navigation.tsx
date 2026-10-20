@@ -14,6 +14,7 @@ import {
   UserCheck,
   Users,
   ShieldCheck,
+  Smartphone,
   LucideIcon,
 } from 'lucide-react';
 import { AvatarDisplay } from './AvatarDisplay';
@@ -140,14 +141,23 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange,
           })}
         </nav>
 
-        {/* Legal & RGPD Link */}
-        <div className="pt-2 pb-1 text-center">
+        {/* PWA Install & Legal Links */}
+        <div className="pt-2 pb-1 flex flex-col items-center gap-1.5 text-center">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('sihscool-open-install'))}
+            className="inline-flex items-center gap-1.5 text-[11px] font-baloo font-bold text-[#1B2A7A] bg-[#FFFFFF] border border-[#CDBDF2] px-3 py-1 rounded-full shadow-xs hover:bg-[#FFE15C] transition-colors"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+            <span>Installer l’application</span>
+          </button>
+
           <button
             type="button"
             onClick={() => (onOpenLegal ? onOpenLegal('rgpd') : undefined)}
-            className="inline-flex items-center gap-1.5 text-[11px] font-baloo font-bold text-[#4A5487] hover:text-[#1B2A7A] hover:underline transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] font-baloo font-bold text-[#4A5487] hover:text-[#1B2A7A] hover:underline transition-colors"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+            <ShieldCheck className="w-3 h-3 text-[#1B2A7A]" strokeWidth={2.5} />
             <span>Charte & Protection RGPD</span>
           </button>
         </div>

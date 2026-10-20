@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="pwa-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#1B2A7A" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <!-- Background in Sky Blue with soft rounded corners -->
+  <rect width="512" height="512" rx="112" fill="#A9D8F5" />
+
+  <!-- Sunburst sparkles in gold -->
+  <g stroke="#FFE15C" stroke-width="8" stroke-linecap="round">
+    <line x1="256" y1="60" x2="256" y2="30" />
+    <line x1="160" y1="85" x2="135" y2="60" />
+    <line x1="352" y1="85" x2="377" y2="60" />
+    <line x1="100" y1="160" x2="70" y2="150" />
+    <line x1="412" y1="160" x2="442" y2="150" />
+  </g>
+
+  <!-- Cloud card in Cream #FFF6E3 -->
+  <rect x="56" y="96" width="400" height="320" rx="64" fill="#FFF6E3" stroke="#CDBDF2" stroke-width="5" filter="url(#pwa-shadow)" />
+
+  <!-- Notebook Sheet in Center -->
+  <g transform="translate(186, 140)">
+    <rect width="140" height="160" rx="24" fill="#FFFFFF" stroke="#CDBDF2" stroke-width="3" filter="url(#pwa-shadow)" />
+    <!-- Notebook lines -->
+    <line x1="15" y1="45" x2="125" y2="45" stroke="#E2E8F0" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="15" y1="85" x2="125" y2="85" stroke="#E2E8F0" stroke-width="2" stroke-dasharray="4,4" />
+    <line x1="15" y1="125" x2="125" y2="125" stroke="#E2E8F0" stroke-width="2" stroke-dasharray="4,4" />
+    <!-- Arabic Alif (أ) in soft red #E5483D -->
+    <text x="70" y="112" font-family="'Baloo Bhaijaan 2', 'Amiri', cursive, sans-serif" font-size="96" font-weight="800" fill="#E5483D" text-anchor="middle">أ</text>
+  </g>
+
+  <!-- Brand Text -->
+  <text x="256" y="372" font-family="'Baloo Bhaijaan 2', 'Baloo 2', cursive, sans-serif" font-size="44" font-weight="800" fill="#1B2A7A" text-anchor="middle" letter-spacing="-1">Sihscool</text>
+</svg>

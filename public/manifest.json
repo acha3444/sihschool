@@ -1,18 +1,56 @@
 {
   "name": "Sihscool · École d'Arabe & Méthode Nourania",
   "short_name": "Sihscool",
-  "description": "Suivi scolaire doux et bienveillant pour l'apprentissage de l'arabe et de la méthode Nourania",
+  "description": "Plateforme d'apprentissage bienveillante de la langue arabe et de la méthode Nourania en direct sur Zoom pour enfants et familles.",
   "start_url": "/",
+  "id": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#A9D8F5",
+  "orientation": "portrait-primary",
+  "background_color": "#FFF6E3",
   "theme_color": "#A9D8F5",
+  "categories": ["education", "kids", "lifestyle"],
+  "lang": "fr-FR",
   "icons": [
     {
-      "src": "/logo.svg",
-      "sizes": "192x192 512x512",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mon Espace",
+      "short_name": "Espace",
+      "description": "Accéder directement à votre espace école",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Méthode Nourania",
+      "short_name": "Nourania",
+      "description": "Les 17 leçons interactives de Nourania",
+      "url": "/#nourania",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -7,6 +7,7 @@ import { StudentView } from './components/student/StudentView';
 import { ParentView } from './components/parent/ParentView';
 import { TeacherView } from './components/teacher/TeacherView';
 import { CookieBanner } from './components/common/CookieBanner';
+import { InstallAppBanner } from './components/common/InstallAppBanner';
 import { LegalModal, LegalTabType } from './components/legal/LegalModal';
 
 export const AppContent: React.FC = () => {
@@ -64,6 +65,9 @@ export const AppContent: React.FC = () => {
 
       {/* Discrete CNIL-compliant Cookie and Privacy Informational Banner */}
       <CookieBanner onOpenCookiesPolicy={() => handleOpenLegal('cookies')} />
+
+      {/* PWA Mobile App Installation Assistant (iOS & Android) */}
+      <InstallAppBanner />
 
       {/* Global Comprehensive Legal & Compliance Modal */}
       <LegalModal

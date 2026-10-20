@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   GraduationCap,
   Sparkles,
+  Smartphone,
 } from 'lucide-react';
 import { AvatarDisplay } from './AvatarDisplay';
 import { NotificationModal } from './NotificationModal';
@@ -100,6 +101,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenLegal }) => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* PWA Mobile App Download Button */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('sihscool-open-install'))}
+              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] text-[#1B2A7A] hover:bg-[#FFE15C] flex items-center justify-center transition-colors shadow-sm"
+              title="Installer l'application sur smartphone (iOS & Android)"
+              aria-label="Installer l'application Sihscool sur smartphone"
+            >
+              <Smartphone className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+            </button>
+
             {/* Legal / RGPD compliance button */}
             <button
               type="button"
