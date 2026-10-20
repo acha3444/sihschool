@@ -76,22 +76,21 @@ export default async function handler(req, res) {
     });
 
     if (createError) {
-      // Si l'utilisateur existe déjà, on vérifie son profil
       if (createError.message && createError.message.toLowerCase().includes('already')) {
-        const { data: existingProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('id, prenom, nom, role')
-          .ilike('email', cleanEmail)
-          .single();
-
         return res.status(200).json({
           success: true,
           alreadyExisted: true,
-          userId: existingProfile?.id,
           email: cleanEmail,
           message: 'Ce compte existe déjà avec cette adresse e-mail.',
         });
       }
+
+      if (createError.message && createError.message.toLowerCase().includes('database error')) {
+        return res.status(400).json({
+          error: "Erreur base de données Supabase : le rôle 'prof' n'est pas encore autorisé dans la table profiles. Veuillez exécuter le script SQL dans Supabase SQL Editor.",
+        });
+      }
+
       return res.status(400).json({ error: `Erreur lors de la création : ${createError.message}` });
     }
 
