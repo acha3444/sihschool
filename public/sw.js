@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Supabase or dynamic API calls: Network only / bypass service worker cache
-  if (url.hostname.includes('supabase.co')) {
+  if (url.hostname.includes('supabase.co') || url.pathname.startsWith('/api/')) {
     return;
   }
 

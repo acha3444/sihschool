@@ -1,80 +1,130 @@
-import React, { useState, useEffect } from 'react';
-import { useApp } from './context/AppContext';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import { LoginPage } from './components/auth/LoginPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
+import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { Header } from './components/common/Header';
-import { Navigation } from './components/common/Navigation';
-import { AuthPage } from './components/auth/AuthPage';
-import { StudentView } from './components/student/StudentView';
-import { ParentView } from './components/parent/ParentView';
-import { TeacherView } from './components/teacher/TeacherView';
-import { CookieBanner } from './components/common/CookieBanner';
-import { InstallAppBanner } from './components/common/InstallAppBanner';
-import { LegalModal, LegalTabType } from './components/legal/LegalModal';
+import { Footer } from './components/common/Footer';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { FamilleDashboard } from './pages/famille/FamilleDashboard';
+import { EleveDashboard } from './pages/eleve/EleveDashboard';
+import { Role } from './types/database';
+import { RefreshCw } from 'lucide-react';
 
-export const AppContent: React.FC = () => {
-  const { currentUser } = useApp();
+interface ProtectedRouteProps {
+  allowedRoles: Role[];
+  children: React.ReactNode;
+}
 
-  const [currentTab, setCurrentTab] = useState<string>('accueil');
-  const [legalModalState, setLegalModalState] = useState<{ isOpen: boolean; tab: LegalTabType }>({
-    isOpen: false,
-    tab: 'rgpd',
-  });
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
+  const { user, profile, loading } = useAuth();
 
-  const handleOpenLegal = (tab: LegalTabType) => {
-    setLegalModalState({ isOpen: true, tab });
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#A9D8F5] via-[#BAE2F8] to-[#CDE9FA] text-[#1B2A7A]">
+        <RefreshCw className="w-10 h-10 animate-spin mb-3 text-[#1B2A7A]" />
+        <p className="font-baloo font-bold text-base">Chargement de Sihscool...</p>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    if (currentUser?.role === 'eleve') {
-      setCurrentTab('accueil');
-    } else if (currentUser?.role === 'parent') {
-      setCurrentTab('dashboard');
-    } else if (currentUser?.role === 'prof' || currentUser?.role === 'admin') {
-      setCurrentTab('dashboard');
-    }
-  }, [currentUser?.role, currentUser?.id]);
+  if (!user || !profile) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(profile.role)) {
+    if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+    if (profile.role === 'parent') return <Navigate to="/famille" replace />;
+    if (profile.role === 'eleve') return <Navigate to="/eleve" replace />;
+    return <Navigate to="/login" replace />;
+  }
 
   return (
-    <>
-      {!currentUser ? (
-        <AuthPage onOpenLegal={handleOpenLegal} />
-      ) : (
-        <div className="min-h-screen bg-gradient-to-b from-[#A9D8F5] via-[#BAE2F8] to-[#CDE9FA] text-[#1B2A7A] flex flex-col font-sans">
-          {/* Desktop Sidebar & Mobile Bottom Navigation */}
-          <Navigation currentTab={currentTab} onTabChange={setCurrentTab} onOpenLegal={handleOpenLegal} />
-
-          {/* Main App Container */}
-          <div className="flex-1 md:pl-64 flex flex-col min-w-0">
-            <Header onOpenLegal={handleOpenLegal} />
-
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-              {currentUser.role === 'eleve' && (
-                <StudentView currentTab={currentTab} onNavigateTab={setCurrentTab} />
-              )}
-
-              {currentUser.role === 'parent' && (
-                <ParentView currentTab={currentTab} onNavigateTab={setCurrentTab} />
-              )}
-
-              {(currentUser.role === 'prof' || currentUser.role === 'admin') && (
-                <TeacherView currentTab={currentTab} onNavigateTab={setCurrentTab} />
-              )}
-            </main>
-          </div>
-        </div>
-      )}
-
-      {/* Discrete CNIL-compliant Cookie and Privacy Informational Banner */}
-      <CookieBanner onOpenCookiesPolicy={() => handleOpenLegal('cookies')} />
-
-      {/* PWA Mobile App Installation Assistant (iOS & Android) */}
-      <InstallAppBanner />
-
-      {/* Global Comprehensive Legal & Compliance Modal */}
-      <LegalModal
-        isOpen={legalModalState.isOpen}
-        onClose={() => setLegalModalState((prev) => ({ ...prev, isOpen: false }))}
-        defaultTab={legalModalState.tab}
-      />
-    </>
+    <div className="min-h-screen bg-gradient-to-b from-[#A9D8F5] via-[#BAE2F8] to-[#CDE9FA] text-[#1B2A7A] flex flex-col font-baloo">
+      <Header />
+      <main className="flex-1 pb-12 w-full">
+        {children}
+      </main>
+      <Footer />
+    </div>
   );
 };
+
+const RootRedirect: React.FC = () => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#A9D8F5] via-[#BAE2F8] to-[#CDE9FA] text-[#1B2A7A]">
+        <RefreshCw className="w-10 h-10 animate-spin mb-3 text-[#1B2A7A]" />
+        <p className="font-baloo font-bold text-base">Chargement...</p>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+  if (profile.role === 'parent') return <Navigate to="/famille" replace />;
+  if (profile.role === 'eleve') return <Navigate to="/eleve" replace />;
+
+  return <Navigate to="/login" replace />;
+};
+
+export const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      {/* Modal bloquant obligatoire si mot de passe temporaire doit être changé */}
+      <ForcePasswordChangeModal />
+
+      <Routes>
+        {/* Page de connexion unique */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Page de réinitialisation de mot de passe */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        {/* Espace Admin (Direction) */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Espace Famille (Parents) */}
+        <Route
+          path="/famille"
+          element={
+            <ProtectedRoute allowedRoles={['parent']}>
+              <FamilleDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Espace Élève (Adultes) */}
+        <Route
+          path="/eleve"
+          element={
+            <ProtectedRoute allowedRoles={['eleve']}>
+              <EleveDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Redirection racine */}
+        <Route path="/" element={<RootRedirect />} />
+
+        {/* Redirection fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+export default App;

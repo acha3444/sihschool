@@ -1,248 +1,493 @@
 -- ==============================================================================
--- SCHÉMA DE BASE DE DONNÉES SIHSCOOL (MÉTHODE NOURANIA & ARABE LITTÉRAIRE)
--- À exécuter dans le "SQL Editor" de votre projet Supabase (https://supabase.com)
+-- SIHSCOOL V1 - SCHEMA SUPABASE COMPLET & SECURISÉ (RLS)
+-- Plateforme de suivi pour école d'arabe en ligne
 -- ==============================================================================
 
--- 1. Table Utilisateurs (Élèves, Parents, Professeurs, Direction)
-CREATE TABLE IF NOT EXISTS public.users (
-  id TEXT PRIMARY KEY,
-  role TEXT NOT NULL CHECK (role IN ('eleve', 'parent', 'prof', 'admin')),
-  prenom TEXT NOT NULL,
-  nom TEXT NOT NULL,
-  email TEXT UNIQUE,
-  avatar TEXT DEFAULT 'cat-mint',
-  telephone TEXT,
-  code_connexion TEXT,
-  mot_de_passe TEXT,
-  doit_changer_mot_de_passe BOOLEAN DEFAULT false,
-  cree_le TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
+-- 1. EXTENSIONS
+create extension if not exists "pgcrypto";
 
--- Migrations sécurisées si la table existe déjà
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS mot_de_passe TEXT;
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS doit_changer_mot_de_passe BOOLEAN DEFAULT false;
+-- 2. SUPPRESSION PROPRE DES ANCIENNES TABLES ET POLICIES (SI EXISTANTES)
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists public.handle_new_user() cascade;
+drop function if exists public.is_admin() cascade;
+drop function if exists public.is_parent_of(uuid) cascade;
+drop function if exists public.is_eleve_self(uuid) cascade;
 
--- 2. Table Groupes / Classes de cours
-CREATE TABLE IF NOT EXISTS public.groupes (
-  id TEXT PRIMARY KEY,
-  nom TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('nourania', 'litteraire', 'mixte')),
-  public TEXT NOT NULL CHECK (public IN ('enfants', 'femmes', 'mixte')),
-  creneau TEXT NOT NULL,
-  lieu_ou_lien TEXT NOT NULL,
-  tarif_mensuel NUMERIC NOT NULL DEFAULT 45,
-  prof_id TEXT REFERENCES public.users(id) ON DELETE SET NULL
-);
+drop table if exists public.annonces cascade;
+drop table if exists public.paiements cascade;
+drop table if exists public.appreciations cascade;
+drop table if exists public.devoirs cascade;
+drop table if exists public.progressions cascade;
+drop table if exists public.presences cascade;
+drop table if exists public.seances cascade;
+drop table if exists public.eleves cascade;
+drop table if exists public.groupes cascade;
+drop table if exists public.profiles cascade;
 
--- 3. Associations Élèves <-> Groupes
-CREATE TABLE IF NOT EXISTS public.groupe_eleves (
-  groupe_id TEXT NOT NULL REFERENCES public.groupes(id) ON DELETE CASCADE,
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  PRIMARY KEY (groupe_id, eleve_id)
-);
-
--- 4. Associations Parents <-> Enfants
-CREATE TABLE IF NOT EXISTS public.parent_eleves (
-  parent_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  PRIMARY KEY (parent_id, eleve_id)
-);
-
--- 5. Table Séances de cours
-CREATE TABLE IF NOT EXISTS public.seances (
-  id TEXT PRIMARY KEY,
-  groupe_id TEXT NOT NULL REFERENCES public.groupes(id) ON DELETE CASCADE,
-  date TEXT NOT NULL,
-  creneau TEXT NOT NULL,
-  effectuee BOOLEAN DEFAULT false,
-  theme TEXT
-);
-
--- 6. Table Présences & Assiduité
-CREATE TABLE IF NOT EXISTS public.presences (
-  seance_id TEXT NOT NULL REFERENCES public.seances(id) ON DELETE CASCADE,
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  statut TEXT NOT NULL CHECK (statut IN ('present', 'retard', 'absent_excuse', 'absent_non_excuse')),
-  motif_retard_ou_absence TEXT,
-  PRIMARY KEY (seance_id, eleve_id)
-);
-
--- 7. Table Progression Nourania (17 Leçons)
-CREATE TABLE IF NOT EXISTS public.progressions (
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  lecon_id TEXT NOT NULL,
-  statut TEXT NOT NULL CHECK (statut IN ('en_cours', 'validee', 'verrouillee')),
-  date_validation TEXT,
-  prof_id TEXT REFERENCES public.users(id),
-  PRIMARY KEY (eleve_id, lecon_id)
-);
-
--- 8. Table Devoirs
-CREATE TABLE IF NOT EXISTS public.devoirs (
-  id TEXT PRIMARY KEY,
-  groupe_id TEXT NOT NULL REFERENCES public.groupes(id) ON DELETE CASCADE,
-  titre TEXT NOT NULL,
-  titre_arabe TEXT,
-  consigne TEXT NOT NULL,
-  date_limite TEXT NOT NULL,
-  audio_prof TEXT
-);
-
--- 9. Table Devoirs Rendus par les Élèves (Récitations audio)
-CREATE TABLE IF NOT EXISTS public.rendus (
-  devoir_id TEXT NOT NULL REFERENCES public.devoirs(id) ON DELETE CASCADE,
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  statut TEXT NOT NULL CHECK (statut IN ('a_faire', 'rendu', 'corrige')),
-  audio_eleve TEXT,
-  commentaire_prof TEXT,
-  note_ou_mention TEXT,
-  rendu_le TEXT,
-  PRIMARY KEY (devoir_id, eleve_id)
-);
-
--- 10. Table Appréciations de l'Enseignant
-CREATE TABLE IF NOT EXISTS public.appreciations (
-  id TEXT PRIMARY KEY,
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  prof_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  date TEXT NOT NULL,
-  texte TEXT NOT NULL
-);
-
--- 11. Table Paiements & Cotisations
-CREATE TABLE IF NOT EXISTS public.paiements (
-  id TEXT PRIMARY KEY,
-  parent_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  mois TEXT NOT NULL,
-  montant NUMERIC NOT NULL,
-  statut TEXT NOT NULL CHECK (statut IN ('paye', 'en_attente', 'retard')),
-  date_paiement TEXT,
-  recu_numero TEXT,
-  moyen_paiement TEXT
-);
-
--- 12. Table Messagerie
-CREATE TABLE IF NOT EXISTS public.messages (
-  id TEXT PRIMARY KEY,
-  expediteur_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  destinataire_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  contenu TEXT NOT NULL,
-  date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-  lu BOOLEAN DEFAULT false
-);
-
--- 13. Table Annonces Générales
-CREATE TABLE IF NOT EXISTS public.annonces (
-  id TEXT PRIMARY KEY,
-  titre TEXT NOT NULL,
-  contenu TEXT NOT NULL,
-  date TEXT NOT NULL,
-  auteur_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
-);
-
--- 14. Table Badges Obtenus
-CREATE TABLE IF NOT EXISTS public.badges_eleves (
-  eleve_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  badge_code TEXT NOT NULL,
-  obtenu_le TEXT NOT NULL,
-  PRIMARY KEY (eleve_id, badge_code)
-);
+-- Suppression d'anciennes tables de la démo si elles existaient
+drop table if exists public.groupe_eleves cascade;
+drop table if exists public.parent_eleves cascade;
+drop table if exists public.messages cascade;
+drop table if exists public.conversations cascade;
+drop table if exists public.badges_eleve cascade;
+drop table if exists public.notifications cascade;
+drop table if exists public.rendus cascade;
+drop table if exists public.users cascade;
 
 -- ==============================================================================
--- ACTIVER ROW LEVEL SECURITY (RLS) & STRATÉGIES PUBLIQUES POUR DÉMONSTRATION
+-- 3. TABLES DU NOUVEAU SCHEMA V1
 -- ==============================================================================
 
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.groupes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.groupe_eleves ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.parent_eleves ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.seances ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.progressions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.devoirs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.rendus ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.appreciations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.paiements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.annonces ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.badges_eleves ENABLE ROW LEVEL SECURITY;
+-- PROFILES : id = auth.users.id
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('admin', 'parent', 'eleve')) default 'parent',
+  prenom text not null,
+  nom text not null default '',
+  telephone text,
+  doit_changer_mdp boolean not null default false,
+  created_at timestamptz not null default now()
+);
 
--- Autoriser la lecture et l'écriture pour le client avec la clé publique (anon)
-DO $$
-DECLARE
-  t text;
-BEGIN
-  FOR t IN 
-    SELECT tablename FROM pg_tables WHERE schemaname = 'public'
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "Allow public read-write for all" ON public.%I', t);
-    EXECUTE format('CREATE POLICY "Allow public read-write for all" ON public.%I FOR ALL USING (true) WITH CHECK (true)', t);
-  END LOOP;
-END $$;
+-- GROUPES : nom, formation, jour, heure, lien_zoom
+create table public.groupes (
+  id uuid primary key default gen_random_uuid(),
+  nom text not null,
+  formation text not null check (formation in ('nourania', 'litteraire', 'eveil')) default 'nourania',
+  jour text not null,
+  heure text not null,
+  lien_zoom text,
+  created_at timestamptz not null default now()
+);
+
+-- ELEVES : prenom, nom, date_naissance, type, parent_id, compte_id, groupe_id, notes_admin
+create table public.eleves (
+  id uuid primary key default gen_random_uuid(),
+  prenom text not null,
+  nom text not null,
+  date_naissance date,
+  type text not null check (type in ('enfant', 'adulte')) default 'enfant',
+  parent_id uuid references public.profiles(id) on delete set null,
+  compte_id uuid references public.profiles(id) on delete set null,
+  groupe_id uuid references public.groupes(id) on delete set null,
+  notes_admin text,
+  created_at timestamptz not null default now()
+);
+
+-- SEANCES : groupe_id, date, theme
+create table public.seances (
+  id uuid primary key default gen_random_uuid(),
+  groupe_id uuid not null references public.groupes(id) on delete cascade,
+  date date not null,
+  theme text,
+  created_at timestamptz not null default now()
+);
+
+-- PRESENCES : seance_id, eleve_id, statut, unique(seance_id, eleve_id)
+create table public.presences (
+  id uuid primary key default gen_random_uuid(),
+  seance_id uuid not null references public.seances(id) on delete cascade,
+  eleve_id uuid not null references public.eleves(id) on delete cascade,
+  statut text not null check (statut in ('present', 'absent', 'retard', 'excuse')),
+  created_at timestamptz not null default now(),
+  constraint presences_seance_eleve_unique unique (seance_id, eleve_id)
+);
+
+-- PROGRESSIONS : eleve_id, formation, lecon_actuelle (1 à 17 pour Nourania), commentaire, mis_a_jour_le
+create table public.progressions (
+  id uuid primary key default gen_random_uuid(),
+  eleve_id uuid not null references public.eleves(id) on delete cascade,
+  formation text not null check (formation in ('nourania', 'litteraire', 'eveil')) default 'nourania',
+  lecon_actuelle int not null default 1 check (lecon_actuelle between 1 and 17),
+  commentaire text,
+  mis_a_jour_le timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+-- DEVOIRS : groupe_id, titre, consigne, date_limite
+create table public.devoirs (
+  id uuid primary key default gen_random_uuid(),
+  groupe_id uuid not null references public.groupes(id) on delete cascade,
+  titre text not null,
+  consigne text not null,
+  date_limite date,
+  created_at timestamptz not null default now()
+);
+
+-- APPRECIATIONS : eleve_id, periode (ex: "2026-10"), texte
+create table public.appreciations (
+  id uuid primary key default gen_random_uuid(),
+  eleve_id uuid not null references public.eleves(id) on delete cascade,
+  periode text not null,
+  texte text not null,
+  created_at timestamptz not null default now()
+);
+
+-- PAIEMENTS : eleve_id, mois (ex: "2026-10"), montant, statut, moyen, date_paiement, unique(eleve_id, mois)
+create table public.paiements (
+  id uuid primary key default gen_random_uuid(),
+  eleve_id uuid not null references public.eleves(id) on delete cascade,
+  mois text not null,
+  montant numeric(10,2) not null default 45,
+  statut text not null check (statut in ('paye', 'en_attente')) default 'en_attente',
+  moyen text,
+  date_paiement date,
+  created_at timestamptz not null default now(),
+  constraint paiements_eleve_mois_unique unique (eleve_id, mois)
+);
+
+-- ANNONCES : titre, texte, groupe_id (nullable = tout le monde), publiee_le
+create table public.annonces (
+  id uuid primary key default gen_random_uuid(),
+  titre text not null,
+  texte text not null,
+  groupe_id uuid references public.groupes(id) on delete set null,
+  publiee_le date not null default current_date,
+  created_at timestamptz not null default now()
+);
+
+-- INDEX PERFORMANCES
+create index ifnot_exists idx_eleves_parent on public.eleves(parent_id);
+create index ifnot_exists idx_eleves_compte on public.eleves(compte_id);
+create index ifnot_exists idx_eleves_groupe on public.eleves(groupe_id);
+create index ifnot_exists idx_seances_groupe_date on public.seances(groupe_id, date);
+create index ifnot_exists idx_presences_seance on public.presences(seance_id);
+create index ifnot_exists idx_progressions_eleve on public.progressions(eleve_id);
+create index ifnot_exists idx_paiements_eleve on public.paiements(eleve_id);
+create index ifnot_exists idx_devoirs_groupe on public.devoirs(groupe_id);
+create index ifnot_exists idx_annonces_groupe on public.annonces(groupe_id);
 
 -- ==============================================================================
--- BUCKET DE STOCKAGE AUDIO (Supabase Storage)
+-- 4. FONCTIONS HELPER DE SÉCURITÉ (SECURITY DEFINER)
 -- ==============================================================================
 
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('audio-recordings', 'audio-recordings', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+-- Vérifie si l'utilisateur connecté est admin
+create or replace function public.is_admin()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+end;
+$$;
 
-CREATE POLICY "Public Audio Access" ON storage.objects
-FOR SELECT USING (bucket_id = 'audio-recordings');
+-- Vérifie si l'utilisateur connecté est le parent de l'élève
+create or replace function public.is_parent_of(p_eleve_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.eleves
+    where id = p_eleve_id and parent_id = auth.uid()
+  );
+end;
+$$;
 
-CREATE POLICY "Public Audio Upload" ON storage.objects
-FOR INSERT WITH CHECK (bucket_id = 'audio-recordings');
+-- Vérifie si l'élève adulte est lui-même
+create or replace function public.is_eleve_self(p_eleve_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.eleves
+    where id = p_eleve_id and compte_id = auth.uid()
+  );
+end;
+$$;
 
 -- ==============================================================================
--- DONNÉES INITIALES (SEED DE DÉPART SIHSCOOL)
+-- 5. ROW LEVEL SECURITY (RLS) SUR TOUTES LES TABLES
 -- ==============================================================================
 
--- Direction & Professeurs
-INSERT INTO public.users (id, role, prenom, nom, email, avatar, telephone)
-VALUES 
-  ('user-admin-1', 'admin', 'Mohammed', 'Al-Mansour', 'direction@sihscool.fr', 'cheikh-avatar', '06 12 34 56 78'),
-  ('user-prof-1', 'prof', 'Fatima', 'El Amrani', 'fatima@sihscool.fr', 'prof-fatima', '06 23 45 67 89'),
-  ('user-prof-2', 'prof', 'Amina', 'Benali', 'amina.prof@sihscool.fr', 'prof-amina', '06 34 56 78 90')
-ON CONFLICT (id) DO NOTHING;
+alter table public.profiles enable row level security;
+alter table public.groupes enable row level security;
+alter table public.eleves enable row level security;
+alter table public.seances enable row level security;
+alter table public.presences enable row level security;
+alter table public.progressions enable row level security;
+alter table public.devoirs enable row level security;
+alter table public.appreciations enable row level security;
+alter table public.paiements enable row level security;
+alter table public.annonces enable row level security;
 
--- Parents
-INSERT INTO public.users (id, role, prenom, nom, email, avatar, telephone)
-VALUES
-  ('user-parent-1', 'parent', 'Yasmina', 'Benali', 'yasmina.benali@gmail.com', 'parent-yasmina', '06 55 44 33 22'),
-  ('user-parent-2', 'parent', 'Karim', 'Meziani', 'karim.meziani@gmail.com', 'parent-karim', '06 66 55 44 33')
-ON CONFLICT (id) DO NOTHING;
+-- ------------------------------------------------------------------------------
+-- POLICIES : PROFILES
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur profiles"
+  on public.profiles
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
 
--- Élèves
-INSERT INTO public.users (id, role, prenom, nom, avatar, code_connexion)
-VALUES
-  ('user-eleve-1', 'eleve', 'Inès', 'Benali', 'cat-mint', '123456'),
-  ('user-eleve-2', 'eleve', 'Youssef', 'Benali', 'falcon-mint', '234567'),
-  ('user-eleve-3', 'eleve', 'Rayan', 'Meziani', 'lion-sun', '345678'),
-  ('user-eleve-4', 'eleve', 'Nour', 'Haddad', 'dove-lavender', '456789')
-ON CONFLICT (id) DO NOTHING;
+create policy "Lecture de son propre profil"
+  on public.profiles
+  for select
+  using (auth.uid() = id);
 
--- Groupes
-INSERT INTO public.groupes (id, nom, type, public, creneau, lieu_ou_lien, tarif_mensuel, prof_id)
-VALUES
-  ('groupe-1', 'Nourania Débutants - Papillons', 'nourania', 'enfants', 'Mercredi 14h00 - 15h30', 'Salle Al-Qalam (RDC)', 45, 'user-prof-1'),
-  ('groupe-2', 'Arabe Littéraire - Étoiles', 'litteraire', 'enfants', 'Samedi 10h00 - 11h30', 'Salle Al-Hikma', 50, 'user-prof-2'),
-  ('groupe-3', 'Nourania & Tajweed - Mamans', 'nourania', 'femmes', 'Samedi 14h00 - 16h00', 'En ligne (Zoom)', 55, 'user-prof-1')
-ON CONFLICT (id) DO NOTHING;
+create policy "Mise a jour de son profil sans changer son role"
+  on public.profiles
+  for update
+  using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and role = (select p.role from public.profiles p where p.id = auth.uid())
+  );
 
--- Relations Parents-Élèves
-INSERT INTO public.parent_eleves (parent_id, eleve_id)
-VALUES
-  ('user-parent-1', 'user-eleve-1'),
-  ('user-parent-1', 'user-eleve-2'),
-  ('user-parent-2', 'user-eleve-3')
-ON CONFLICT DO NOTHING;
+-- ------------------------------------------------------------------------------
+-- POLICIES : ELEVES
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur eleves"
+  on public.eleves
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
 
--- Inscriptions aux Groupes
-INSERT INTO public.groupe_eleves (groupe_id, eleve_id)
-VALUES
-  ('groupe-1', 'user-eleve-1'),
-  ('groupe-1', 'user-eleve-3'),
-  ('groupe-2', 'user-eleve-2'),
-  ('groupe-1', 'user-eleve-4')
-ON CONFLICT DO NOTHING;
+create policy "Parent lit ses enfants"
+  on public.eleves
+  for select
+  using (parent_id = auth.uid());
+
+create policy "Eleve adulte lit sa fiche"
+  on public.eleves
+  for select
+  using (compte_id = auth.uid());
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : GROUPES
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur groupes"
+  on public.groupes
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les groupes de ses enfants"
+  on public.groupes
+  for select
+  using (
+    exists (
+      select 1 from public.eleves e
+      where e.groupe_id = groupes.id and e.parent_id = auth.uid()
+    )
+  );
+
+create policy "Eleve adulte lit son groupe"
+  on public.groupes
+  for select
+  using (
+    exists (
+      select 1 from public.eleves e
+      where e.groupe_id = groupes.id and e.compte_id = auth.uid()
+    )
+  );
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : SEANCES
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur seances"
+  on public.seances
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les seances de ses enfants"
+  on public.seances
+  for select
+  using (
+    exists (
+      select 1 from public.eleves e
+      where e.groupe_id = seances.groupe_id and e.parent_id = auth.uid()
+    )
+  );
+
+create policy "Eleve adulte lit les seances de son groupe"
+  on public.seances
+  for select
+  using (
+    exists (
+      select 1 from public.eleves e
+      where e.groupe_id = seances.groupe_id and e.compte_id = auth.uid()
+    )
+  );
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : PRESENCES
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur presences"
+  on public.presences
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les presences de ses enfants"
+  on public.presences
+  for select
+  using (public.is_parent_of(eleve_id));
+
+create policy "Eleve adulte lit ses presences"
+  on public.presences
+  for select
+  using (public.is_eleve_self(eleve_id));
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : PROGRESSIONS
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur progressions"
+  on public.progressions
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit la progression de ses enfants"
+  on public.progressions
+  for select
+  using (public.is_parent_of(eleve_id));
+
+create policy "Eleve adulte lit sa progression"
+  on public.progressions
+  for select
+  using (public.is_eleve_self(eleve_id));
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : DEVOIRS
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur devoirs"
+  on public.devoirs
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les devoirs du groupe de ses enfants"
+  on public.devoirs
+  for select
+  using (
+    exists (
+      select 1 from public.eleves e
+      where e.groupe_id = devoirs.groupe_id and e.parent_id = auth.uid()
+    )
+  );
+
+create policy "Eleve adulte lit les devoirs de son groupe"
+  on public.devoirs
+  for select
+  using (
+    exists (
+      select 1 from public.eleves e
+      where e.groupe_id = devoirs.groupe_id and e.compte_id = auth.uid()
+    )
+  );
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : APPRECIATIONS
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur appreciations"
+  on public.appreciations
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les appreciations de ses enfants"
+  on public.appreciations
+  for select
+  using (public.is_parent_of(eleve_id));
+
+create policy "Eleve adulte lit ses appreciations"
+  on public.appreciations
+  for select
+  using (public.is_eleve_self(eleve_id));
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : PAIEMENTS
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur paiements"
+  on public.paiements
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les cotisations de ses enfants"
+  on public.paiements
+  for select
+  using (public.is_parent_of(eleve_id));
+
+create policy "Eleve adulte lit ses cotisations"
+  on public.paiements
+  for select
+  using (public.is_eleve_self(eleve_id));
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : ANNONCES
+-- ------------------------------------------------------------------------------
+create policy "Admin total sur annonces"
+  on public.annonces
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Parent lit les annonces generales ou de ses enfants"
+  on public.annonces
+  for select
+  using (
+    groupe_id is null
+    or exists (
+      select 1 from public.eleves e
+      where e.groupe_id = annonces.groupe_id and e.parent_id = auth.uid()
+    )
+  );
+
+create policy "Eleve adulte lit les annonces generales ou de son groupe"
+  on public.annonces
+  for select
+  using (
+    groupe_id is null
+    or exists (
+      select 1 from public.eleves e
+      where e.groupe_id = annonces.groupe_id and e.compte_id = auth.uid()
+    )
+  );
+
+-- ==============================================================================
+-- 6. TRIGGER DE CREATION AUTOMATIQUE DU PROFIL LORS DE L'INSCRIPTION
+-- ==============================================================================
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, role, prenom, nom, telephone, doit_changer_mdp)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'role', 'parent'),
+    coalesce(new.raw_user_meta_data->>'prenom', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data->>'nom', ''),
+    new.raw_user_meta_data->>'telephone',
+    coalesce((new.raw_user_meta_data->>'doit_changer_mdp')::boolean, false)
+  )
+  on conflict (id) do update set
+    role = coalesce(excluded.role, public.profiles.role),
+    prenom = coalesce(nullif(excluded.prenom, ''), public.profiles.prenom),
+    nom = coalesce(nullif(excluded.nom, ''), public.profiles.nom),
+    telephone = coalesce(excluded.telephone, public.profiles.telephone),
+    doit_changer_mdp = coalesce(excluded.doit_changer_mdp, public.profiles.doit_changer_mdp);
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
