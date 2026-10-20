@@ -1,0 +1,35 @@
+# Sihscool · Plateforme Éducative & École d'Arabe
+
+> Sihscool est un institut et une plateforme d'enseignement de la langue arabe littéraire et de la méthode Nourania destinée aux enfants et à leurs familles. Conçue selon une approche bienveillante, illustrée et interactive comme un livre d'images vivant.
+
+## Identité & Éditeur
+- **Nom du service** : Sihscool
+- **Vocation** : Apprentissage phonétique et lecture de l'arabe (Méthode Nourania en 17 leçons, tajwîd, vocabulaire, devoirs de récitation vocale).
+- **Public cible** : Élèves (enfants de 5 à 15 ans), Parents/Responsables légaux, Enseignants et Direction pédagogique.
+- **Directeur de la publication** : Cheikh Mohammed Al-Mansour
+- **Contact officiel** : direction@sihscool.fr
+- **Délégué à la Protection des Données (DPO)** : dpo@sihscool.fr
+- **Localisation** : France / Union Européenne
+
+## Conformité Légale & RGPD (Protection des Données Personnelles)
+- **Réglementation applicable** : Règlement Général sur la Protection des Données (RGPD 2016/679) et Loi Informatique et Libertés française (Loi n° 78-17 modifiée).
+- **Protection renforcée des mineurs (Article 8 RGPD)** :
+  - Aucun compte élève ne peut être créé librement par un mineur en accès public.
+  - Les inscriptions sont gérées exclusivement par la direction de l'école avec consentement parental préalable.
+  - Aucune adresse email ni numéro de téléphone n'est collecté pour les élèves mineurs.
+  - L'authentification des élèves s'effectue via un avatar graphique et un code secret local à 6 chiffres.
+  - Les enregistrements vocaux des devoirs de récitation sont réservés à l'évaluation pédagogique par l'enseignant attitré. Ils ne sont jamais partagés publiquement ni utilisés pour l'entraînement d'algorithmes d'IA tiers.
+- **Politique des Cookies & Traceurs** :
+  - Zéro traceur publicitaire ou commercial (pas de Google Analytics, pas de Pixel Meta/Facebook, pas de retargeting).
+  - Uniquement des cookies et données de stockage local (`localStorage`) strictement techniques, indispensables à l'authentification de session et au fonctionnement hors-ligne (exemptés de consentement préalable en vertu de l'article 82 de la Loi Informatique et Libertés).
+- **Hébergement des données** : Base de données hébergée au sein de l'Union Européenne (Région eu-central-1 Francfort, Allemagne, infrastructure certifiée ISO 27001 et SOC 2).
+- **Droits des personnes (Articles 15 à 22 RGPD)** : Les parents disposent d'un droit d'accès, d'export de leurs données au format JSON, de rectification, de limitation et d'effacement complet de leur dossier sous 48h.
+
+## Droit de la Consommation & Remboursement
+- **Droit de rétractation (Article L. 221-18 du Code de la consommation)** : Tout parent souscrivant à un abonnement ou une inscription dispose d'un délai légal de 14 jours francs pour exercer son droit de rétractation.
+- **Médiateur de la consommation (Article L. 612-1 du Code de la consommation)** : Litiges éligibles au recours gratuit auprès du centre de médiation CM2C (cm2c.net).
+
+## Architecture & Pédagogie
+- **Méthode Nourania** : 17 étapes phonétiques progressives (Lettres isolées, composées, voyelles courtes/Harakat, Tanwin, Sukun, Shaddah, règles de Tajwîd).
+- **Suivi des familles** : Appel en temps réel (présent, absent, retard, excusé), cahier de liaison numérique prof-parent, relevé des cotisations et reçus téléchargeables.
+- **Accessibilité** : Conforme aux recommandations d'accessibilité WCAG 2.1 AA (contraste supérieur à 4.5:1, navigation clavier, attributs sémantiques, descriptions alternatives d'images).

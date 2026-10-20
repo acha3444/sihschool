@@ -13,11 +13,17 @@ import {
   AlertCircle,
   CheckCircle2,
   Info,
+  ShieldCheck,
 } from 'lucide-react';
 import { AVATAR_OPTIONS, AvatarDisplay } from '../common/AvatarDisplay';
 import { Sunburst, FloatingCloud } from '../common/Sunburst';
+import { LegalModal, LegalTabType } from '../legal/LegalModal';
 
-export const AuthPage: React.FC = () => {
+interface AuthPageProps {
+  onOpenLegal?: (tab: LegalTabType) => void;
+}
+
+export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
   const { loginWithEmail, loginStudent, loginAs, updateUserPassword, users } = useApp();
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -28,6 +34,20 @@ export const AuthPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [forgotPasswordModal, setForgotPasswordModal] = useState(false);
   const [forgotEmailSent, setForgotEmailSent] = useState(false);
+
+  // Local fallback for legal modal if not handled by parent App
+  const [localLegalModal, setLocalLegalModal] = useState<{ isOpen: boolean; tab: LegalTabType }>({
+    isOpen: false,
+    tab: 'rgpd',
+  });
+
+  const handleOpenLegal = (tab: LegalTabType) => {
+    if (onOpenLegal) {
+      onOpenLegal(tab);
+    } else {
+      setLocalLegalModal({ isOpen: true, tab });
+    }
+  };
 
   // First Login Password Change State
   const [passwordChangeUser, setPasswordChangeUser] = useState<User | null>(null);
@@ -94,12 +114,27 @@ export const AuthPage: React.FC = () => {
       {/* Top Header */}
       <header className="max-w-5xl mx-auto w-full flex items-center justify-between py-2 relative z-10">
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Sihscool" className="h-12 w-auto drop-shadow-sm" />
+          <img
+            src="/logo.svg"
+            alt="Logo officiel de l'école Sihscool avec la lettre Alif calligraphiée"
+            className="h-12 w-auto drop-shadow-sm"
+          />
         </div>
 
-        <div className="badge-lavender shadow-sm font-baloo">
-          <Sunburst size="sm" />
-          <span>Apprendre avec joie & douceur</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('rgpd')}
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs text-[#1B2A7A] hover:underline font-baloo font-bold bg-[#FFFFFF]/80 border border-[#CDBDF2] px-3 py-1.5 rounded-full shadow-sm"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+            <span>Charte & RGPD</span>
+          </button>
+
+          <div className="badge-lavender shadow-sm font-baloo">
+            <Sunburst size="sm" />
+            <span>Apprendre avec joie & douceur</span>
+          </div>
         </div>
       </header>
 
@@ -129,7 +164,7 @@ export const AuthPage: React.FC = () => {
               <div className="max-w-md mx-auto my-4 overflow-hidden rounded-[32px] shadow-cloud-pop border-4 border-[#FFF6E3] relative">
                 <img
                   src="/illustrations/hero-mom-child.jpg"
-                  alt="Maman et son enfant lisant l'arabe avec tendresse"
+                  alt="Illustration peinte à la gouache : une maman et son jeune enfant lisant ensemble un manuel de langue arabe dans une atmosphère douce et bienveillante"
                   className="w-full h-48 sm:h-56 object-cover object-center"
                 />
                 <div className="absolute bottom-2 right-3 badge-lavender !py-0.5 !px-2.5 text-[10px] shadow-sm">
@@ -566,8 +601,8 @@ export const AuthPage: React.FC = () => {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="max-w-4xl mx-auto w-full text-center py-4 border-t border-[#CDBDF2]/40 text-xs text-[#4A5487] font-baloo relative z-10 space-y-2">
+      {/* Footer avec liens de conformité légale & RGPD */}
+      <footer className="max-w-4xl mx-auto w-full text-center py-4 border-t border-[#CDBDF2]/40 text-xs text-[#4A5487] font-baloo relative z-10 space-y-2.5">
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"
@@ -581,8 +616,76 @@ export const AuthPage: React.FC = () => {
             <ArrowRight className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
           </button>
         </div>
-        <p>Sihscool © 2026 · Espace d’apprentissage doux et rassurant pour toute la famille.</p>
+
+        {/* Liens de conformité RGPD, CGU, Remboursement, Cookies, Mineurs */}
+        <nav aria-label="Liens d'information légale et réglementaire" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] pt-1">
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('rgpd')}
+            className="text-[#4A5487] hover:text-[#1B2A7A] hover:underline font-bold transition-colors"
+          >
+            Politique de Confidentialité (RGPD)
+          </button>
+          <span className="text-[#CDBDF2]" aria-hidden="true">•</span>
+
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('cgu')}
+            className="text-[#4A5487] hover:text-[#1B2A7A] hover:underline font-bold transition-colors"
+          >
+            Conditions Générales (CGU / CGV)
+          </button>
+          <span className="text-[#CDBDF2]" aria-hidden="true">•</span>
+
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('remboursement')}
+            className="text-[#4A5487] hover:text-[#1B2A7A] hover:underline font-bold transition-colors"
+          >
+            Rétractation (14j) & Remboursement
+          </button>
+          <span className="text-[#CDBDF2]" aria-hidden="true">•</span>
+
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('cookies')}
+            className="text-[#4A5487] hover:text-[#1B2A7A] hover:underline font-bold transition-colors"
+          >
+            Politique des Cookies (0 traceur publicitaire)
+          </button>
+          <span className="text-[#CDBDF2]" aria-hidden="true">•</span>
+
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('mineurs')}
+            className="text-[#4A5487] hover:text-[#1B2A7A] hover:underline font-bold transition-colors"
+          >
+            Protection des Mineurs
+          </button>
+          <span className="text-[#CDBDF2]" aria-hidden="true">•</span>
+
+          <button
+            type="button"
+            onClick={() => handleOpenLegal('mentions')}
+            className="text-[#4A5487] hover:text-[#1B2A7A] hover:underline font-bold transition-colors"
+          >
+            Mentions Légales
+          </button>
+        </nav>
+
+        <p className="text-[11px] text-[#4A5487] font-medium">
+          Sihscool © 2026 · Institut d'apprentissage doux et rassurant pour toute la famille. Hébergé en UE · Conforme CNIL.
+        </p>
       </footer>
+
+      {/* Local fallback modal */}
+      {!onOpenLegal && (
+        <LegalModal
+          isOpen={localLegalModal.isOpen}
+          onClose={() => setLocalLegalModal((prev) => ({ ...prev, isOpen: false }))}
+          defaultTab={localLegalModal.tab}
+        />
+      )}
     </div>
   );
 };

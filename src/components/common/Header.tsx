@@ -10,10 +10,14 @@ import {
 } from 'lucide-react';
 import { AvatarDisplay } from './AvatarDisplay';
 import { NotificationModal } from './NotificationModal';
-import { LegalModal } from '../legal/LegalModal';
+import { LegalModal, LegalTabType } from '../legal/LegalModal';
 import { Sunburst } from './Sunburst';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onOpenLegal?: (tab: LegalTabType) => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onOpenLegal }) => {
   const {
     currentUser,
     logout,
@@ -26,6 +30,14 @@ export const Header: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
 
+  const handleOpenLegalModal = (tab: LegalTabType = 'rgpd') => {
+    if (onOpenLegal) {
+      onOpenLegal(tab);
+    } else {
+      setShowLegalModal(true);
+    }
+  };
+
   const unreadCount = getUnreadNotificationsCount();
   const parentChildren = currentUser?.role === 'parent' ? getChildrenOfParent(currentUser.id) : [];
 
@@ -36,7 +48,11 @@ export const Header: React.FC = () => {
           {/* Brand Logo with (أ) in soft red */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.svg" alt="Sihscool" className="h-10 w-auto drop-shadow-sm" />
+              <img
+                src="/logo.svg"
+                alt="Logo officiel de l'école Sihscool - Institut d'apprentissage de l'arabe et méthode Nourania"
+                className="h-10 w-auto drop-shadow-sm"
+              />
             </div>
 
             {/* Role Badge Indicator */}
@@ -84,12 +100,25 @@ export const Header: React.FC = () => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Legal / RGPD compliance button */}
+            <button
+              type="button"
+              onClick={() => handleOpenLegalModal('rgpd')}
+              className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] text-[#1B2A7A] hover:bg-[#FFE15C] flex items-center justify-center transition-colors shadow-sm"
+              title="Centre Juridique, Charte & RGPD"
+              aria-label="Ouvrir le centre juridique et la conformité RGPD"
+            >
+              <ShieldCheck className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+            </button>
+
             {/* Notification Bell with Pink/Sun badge */}
             {currentUser && (
               <button
+                type="button"
                 onClick={() => setShowNotifications(true)}
                 className="relative w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] text-[#1B2A7A] hover:bg-[#FFF6E3] flex items-center justify-center transition-colors shadow-sm"
                 title="Notifications"
+                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`}
               >
                 <Bell className="w-4 h-4" strokeWidth={2.5} />
                 {unreadCount > 0 && (
@@ -101,7 +130,7 @@ export const Header: React.FC = () => {
             )}
 
             {/* Profile Avatar & Logout */}
-            {currentUser ? (
+            {currentUser && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 pl-2 border-l border-[#CDBDF2]">
                   <AvatarDisplay avatarKey={currentUser.avatar} size="sm" />
@@ -116,20 +145,15 @@ export const Header: React.FC = () => {
                 </div>
 
                 <button
+                  type="button"
                   onClick={logout}
                   className="w-10 h-10 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] text-[#4A5487] hover:text-[#E5483D] hover:bg-[#FFF6E3] flex items-center justify-center transition-colors ml-1 shadow-sm"
                   title="Se déconnecter"
+                  aria-label="Se déconnecter de la session"
                 >
                   <LogOut className="w-4 h-4" strokeWidth={2.5} />
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => setShowLegalModal(true)}
-                className="text-xs text-[#1B2A7A] hover:underline font-baloo font-bold"
-              >
-                Charte & Confidentialité
-              </button>
             )}
           </div>
         </div>
@@ -138,8 +162,10 @@ export const Header: React.FC = () => {
       {/* Notifications Drawer */}
       <NotificationModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
 
-      {/* Legal & RGPD Modal */}
-      <LegalModal isOpen={showLegalModal} onClose={() => setShowLegalModal(false)} />
+      {/* Fallback Legal & RGPD Modal */}
+      {!onOpenLegal && (
+        <LegalModal isOpen={showLegalModal} onClose={() => setShowLegalModal(false)} />
+      )}
     </>
   );
 };

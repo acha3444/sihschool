@@ -17,6 +17,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { AvatarDisplay } from './AvatarDisplay';
+import { LegalTabType } from '../legal/LegalModal';
 
 export interface NavTabItem {
   id: string;
@@ -28,9 +29,10 @@ export interface NavTabItem {
 interface NavigationProps {
   currentTab: string;
   onTabChange: (tabId: string) => void;
+  onOpenLegal?: (tab: LegalTabType) => void;
 }
 
-export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange }) => {
+export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange, onOpenLegal }) => {
   const { currentUser, conversations } = useApp();
 
   if (!currentUser) return null;
@@ -83,7 +85,11 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange 
       <aside className="hidden md:flex flex-col fixed top-0 left-0 bottom-0 w-64 bg-[#FFF6E3] border-r border-[#CDBDF2]/50 z-30 p-4 shadow-[4px_0_20px_rgba(27,42,122,0.04)]">
         {/* Brand / Logo */}
         <div className="flex items-center gap-2.5 px-3 py-3 mb-3 border-b border-[#CDBDF2]/40">
-          <img src="/logo.svg" alt="Sihscool" className="h-10 w-auto" />
+          <img
+            src="/logo.svg"
+            alt="Logo officiel de l'école Sihscool - Institut d'apprentissage de l'arabe et méthode Nourania"
+            className="h-10 w-auto"
+          />
         </div>
 
         {/* Current User Cloud Card */}
@@ -134,8 +140,20 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange 
           })}
         </nav>
 
+        {/* Legal & RGPD Link */}
+        <div className="pt-2 pb-1 text-center">
+          <button
+            type="button"
+            onClick={() => (onOpenLegal ? onOpenLegal('rgpd') : undefined)}
+            className="inline-flex items-center gap-1.5 text-[11px] font-baloo font-bold text-[#4A5487] hover:text-[#1B2A7A] hover:underline transition-colors"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+            <span>Charte & Protection RGPD</span>
+          </button>
+        </div>
+
         {/* Bottom gentle Arabic proverb */}
-        <div className="pt-3 border-t border-[#CDBDF2]/40 text-center">
+        <div className="pt-2 border-t border-[#CDBDF2]/40 text-center">
           <p className="font-arabic text-lg text-[#1B2A7A] leading-relaxed font-bold" dir="rtl">
             خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ
           </p>

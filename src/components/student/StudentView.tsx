@@ -235,7 +235,7 @@ export const StudentView: React.FC<StudentViewProps> = ({ currentTab, onNavigate
           <div className="cloud-card p-5 border-2 border-white flex flex-col sm:flex-row items-center gap-5 shadow-soft-blue">
             <img
               src="/illustrations/school-notebook.jpg"
-              alt="Cahier de classe d'arabe doux"
+              alt="Illustration d'un cahier d'écolier illustré pour les devoirs de récitation orale et de lecture de la méthode Nourania"
               className="w-full sm:w-48 h-32 object-cover rounded-2xl border-2 border-[#CDBDF2]"
             />
             <div className="space-y-2 text-center sm:text-left flex-1">

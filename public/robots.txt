@@ -1,0 +1,36 @@
+# robots.txt for Sihscool - École d'apprentissage de l'arabe et Nourania
+# https://sihscool.fr
+
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Disallow: /api/
+Disallow: /admin/
+Disallow: /eleve/
+Disallow: /parent/
+Disallow: /prof/
+
+# Explicit permissions for AI Agents & Search Crawlers
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+Disallow: /eleve/
+Disallow: /parent/
+Disallow: /prof/
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /llms.txt
+Disallow: /eleve/
+Disallow: /parent/
+Disallow: /prof/
+
+User-agent: Google-Extended
+Allow: /
+Allow: /llms.txt
+
+User-agent: PerplexityBot
+Allow: /
+Allow: /llms.txt
+
+Sitemap: https://sihscool.fr/sitemap.xml

@@ -18,6 +18,7 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface ParentViewProps {
@@ -617,6 +618,19 @@ export const ParentView: React.FC<ParentViewProps> = ({ currentTab, onNavigateTa
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Consumer Code & Refund Notice (Code de la consommation) */}
+          <div className="p-4 rounded-3xl bg-[#FFF6E3] border-2 border-[#CDBDF2] space-y-1.5 text-xs shadow-sm">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <strong className="text-[#1B2A7A] font-extrabold">
+                Garanties Légales & Droit de Rétractation (Code de la consommation)
+              </strong>
+            </div>
+            <p className="text-[#4A5487] text-[11px] leading-relaxed font-medium">
+              Conformément à l’article L. 221-18 du Code de la consommation, les familles disposent d’un délai légal de rétractation de quatorze (14) jours francs à compter de la souscription en ligne. En cas de contestation non résolue, vous bénéficiez d’un droit de recours gratuit auprès du médiateur de la consommation agréé (CM2C, 49 Rue de Ponthieu, 75008 Paris).
+            </p>
           </div>
         </div>
       )}

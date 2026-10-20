@@ -67,6 +67,8 @@ export const AvatarDisplay: React.FC<AvatarDisplayProps> = ({ avatarKey, size = 
 
   return (
     <div
+      role="img"
+      aria-label={`Avatar : ${matched.label}`}
       className={`inline-flex items-center justify-center shrink-0 transition-transform active:scale-95 ${sizeClasses[size]} ${matched.bg} ${matched.color} ${className}`}
       title={matched.label}
     >
