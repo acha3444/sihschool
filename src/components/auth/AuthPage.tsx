@@ -160,6 +160,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
                 Un livre illustré vivant pour apprendre l’arabe littéraire et la méthode Nourania pas à pas, avec douceur et bienveillance.
               </p>
 
+              {/* Badges Cours Zoom & Durée 1h30 */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <span className="badge-lavender text-xs font-extrabold shadow-sm flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#2F5BD1]" />
+                  Cours interactifs en visio sur Zoom
+                </span>
+                <span className="bg-[#FFE15C] text-[#1B2A7A] text-xs font-extrabold px-3.5 py-1 rounded-full shadow-sm">
+                  1h30 par semaine en petit groupe
+                </span>
+              </div>
+
               {/* Gouache Illustration Banner */}
               <div className="max-w-md mx-auto my-4 overflow-hidden rounded-[32px] shadow-cloud-pop border-4 border-[#FFF6E3] relative">
                 <img
@@ -192,7 +203,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
                     أَنَا تِلْمِيذ
                   </p>
                   <p className="text-xs text-[#4A5487] leading-relaxed font-baloo">
-                    Les 17 leçons de Nourania en voyage de jeu, cartes de lettres et devoirs de récitation.
+                    Séances Zoom de 1h30 en direct, les 17 leçons de Nourania en voyage de jeu et devoirs de récitation.
                   </p>
                 </div>
 
@@ -226,7 +237,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
                     أَنَا وَلِيُّ الأَمْر
                   </p>
                   <p className="text-xs text-[#4A5487] leading-relaxed font-baloo">
-                    Suivez les présences de vos enfants, les mots du prof, les reçus et échangez en privé.
+                    Rejoignez les cours Zoom (1h30/semaine), suivez les présences, les progrès et échangez avec le professeur.
                   </p>
                 </div>
 

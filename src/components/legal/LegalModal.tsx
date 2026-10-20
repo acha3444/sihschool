@@ -77,10 +77,11 @@ Agissant en qualité de titulaire de l'autorité parentale sur l'enfant mineur :
 Nom et prénom de l'élève : 
 Niveau scolaire / Groupe : 
 
-1. Déclare inscrire mon enfant sur la plateforme pédagogique Sihscool.
+1. Déclare inscrire mon enfant sur la plateforme pédagogique Sihscool pour suivre les cours hebdomadaires d'1h30 par semaine en visioconférence interactive sur Zoom.
 2. Autorise Sihscool à créer un compte écolier sécurisé (identifié par un avatar et un code PIN local à 6 chiffres, sans collecte d'adresse email pour le mineur).
-3. Autorise expressément mon enfant à enregistrer et transmettre de courts fichiers audio de récitation vocale (méthode Nourania et lecture coranique) à son professeur désigné, aux fins exclusives d'écoute et de correction pédagogique individuelle.
-4. Ai pris connaissance que ces enregistrements ne sont jamais rendus publics, ne sont cédés à aucun tiers et sont supprimés en fin d'année scolaire ou sur simple demande écrite à direction@sihscool.fr.
+3. Autorise mon enfant à participer aux séances de visio Zoom en petit groupe et à transmettre de courts devoirs de récitation vocale (méthode Nourania et lecture coranique) à son professeur désigné, aux fins exclusives d'écoute et de correction pédagogique individuelle.
+4. M'engage à respecter l'intimité des autres enfants en ne procédant à aucun enregistrement ou capture d'écran des cours en direct sur Zoom.
+5. Ai pris connaissance que ces données ne sont jamais rendues publiques, ne sont cédées à aucun tiers et sont supprimées en fin d'année scolaire ou sur simple demande écrite à direction@sihscool.fr.
 
 Fait le : [Date]
 Mention "Bon pour accord" et signature du parent :`;
@@ -313,30 +314,37 @@ Mention "Bon pour accord" et signature du parent :`;
               </div>
 
               <div className="p-4 rounded-3xl bg-[#FFFFFF] border-2 border-[#CDBDF2] space-y-2">
-                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 1 : Création et Accompagnement des Comptes</h4>
+                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 1 : Format des Cours & Visioconférence Zoom (1h30 / semaine)</h4>
+                <p className="text-[11px]">
+                  Les enseignements dispensés par Sihscool s'effectuent à distance, en direct par visioconférence via le logiciel <strong>Zoom</strong>, sous la forme d'<strong>une séance hebdomadaire d'une heure et trente minutes (1h30 par semaine)</strong> par groupe de niveau. Chaque séance est sécurisée par un mot de passe unique et une salle d'attente (*Waiting Room*) filtrée par l'enseignant pour interdire tout accès non autorisé.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-3xl bg-[#FFFFFF] border-2 border-[#CDBDF2] space-y-2">
+                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 2 : Création et Accompagnement des Comptes</h4>
                 <p className="text-[11px]">
                   Afin de garantir un environnement sécurisé et bienveillant, <strong>aucun compte ne peut être ouvert librement par un inconnu ou un mineur isolé</strong>. Les comptes familles et élèves sont ouverts exclusivement par la direction après instruction du dossier d'inscription. Les parents reçoivent un mot de passe temporaire à usage unique (OTP) qu'ils doivent obligatoirement renouveler dès la première connexion.
                 </p>
               </div>
 
               <div className="p-4 rounded-3xl bg-[#FFFFFF] border-2 border-[#CDBDF2] space-y-2">
-                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 2 : Assiduité et Rôle des Familles</h4>
+                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 3 : Assiduité aux Séances Zoom et Rôle des Familles</h4>
                 <p className="text-[11px]">
-                  Les parents s'engagent à accompagner régulièrement leurs enfants dans l'apprentissage des leçons de Nourania et l'envoi des devoirs oraux. Toute absence doit être signalée au professeur ou à la direction via la messagerie intégrée.
+                  Les parents veillent à ce que leur enfant soit connecté à l'heure convenue à la séance Zoom hebdomadaire (1h30) dans un environnement calme favorisant la concentration. Toute absence prévisible doit être signalée au professeur à l'avance.
                 </p>
               </div>
 
               <div className="p-4 rounded-3xl bg-[#FFFFFF] border-2 border-[#CDBDF2] space-y-2">
-                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 3 : Propriété Intellectuelle (Code de la propriété intellectuelle)</h4>
+                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 4 : Interdiction d'Enregistrement des Sessions Zoom</h4>
                 <p className="text-[11px]">
-                  L'ensemble des contenus présents sur Sihscool (illustrations artistiques à la gouache, enregistrements audio de récitation, graphismes, textes, fiches d'exercices et logo) est protégé par les lois françaises et internationales relatives au droit d'auteur. Toute reproduction, diffusion publique ou utilisation commerciale sans autorisation expresse écrite est strictement interdite.
+                  Afin de garantir le respect absolu de la vie privée, de la voix et du droit à l'image des enfants mineurs participants et des enseignants, <strong>il est formellement interdit à toute personne (famille, élève ou tiers) d'enregistrer, capturer, photographier ou diffuser tout extrait vidéo ou sonore des séances Zoom</strong>. Tout manquement donnera lieu à l'exclusion immédiate sans remboursement.
                 </p>
               </div>
 
               <div className="p-4 rounded-3xl bg-[#FFFFFF] border-2 border-[#CDBDF2] space-y-2">
-                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 4 : Comportement et Charte de Bienveillance</h4>
+                <h4 className="font-extrabold text-xs text-[#1B2A7A]">Article 5 : Propriété Intellectuelle (Code de la propriété intellectuelle)</h4>
                 <p className="text-[11px]">
-                  Les utilisateurs s'engagent à respecter les valeurs de politesse, de douceur et de respect mutuel au sein des communications. Tout comportement inapproprié, diffamatoire ou contraire aux objectifs éducatifs pourra entraîner la suspension immédiate de l'accès.
+                  L'ensemble des contenus présents sur Sihscool (illustrations artistiques à la gouache, enregistrements audio de récitation, graphismes, textes, fiches d'exercices et logo) est protégé par les lois françaises et internationales relatives au droit d'auteur.
                 </p>
               </div>
             </div>
@@ -377,7 +385,7 @@ Mention "Bon pour accord" et signature du parent :`;
                   2. Exécution Anticipée des Cours (Article L. 221-28 1°)
                 </h4>
                 <p className="text-[11px]">
-                  Si vous avez expressément demandé que les cours et l'accès à la plateforme débutent avant l'expiration du délai de rétractation de 14 jours, vous conservez votre droit de rétractation mais restez redevable d'un montant proportionné aux cours effectivement dispensés jusqu'à la notification de votre rétractation.
+                  Si vous avez expressément demandé que les cours débutent avant l'expiration du délai de rétractation de 14 jours, vous conservez votre droit de rétractation mais le remboursement sera calculé au prorata exact des séances de visio Zoom de 1h30 effectivement dispensées jusqu'à la notification de votre rétractation.
                 </p>
               </div>
 
@@ -556,6 +564,16 @@ Mention "Bon pour accord" et signature du parent :`;
                   <li>Ne sont jamais partagés publiquement ni revendus.</li>
                   <li>Ne sont <strong>jamais utilisés</strong> pour alimenter ou entraîner des modèles d'intelligence artificielle commerciaux.</li>
                   <li>Peuvent être supprimés à tout moment sur demande du titulaire de l'autorité parentale.</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-3xl bg-[#FFFFFF] border-2 border-[#CDBDF2] space-y-2">
+                <h4 className="font-extrabold text-xs text-[#1B2A7A]">3. Protection Renforcée lors des Séances en Visioconférence Zoom</h4>
+                <ul className="list-disc list-inside space-y-1 text-[11px]">
+                  <li>Les cours ont lieu en direct sur Zoom (1h30 par semaine) en comité restreint d'élèves.</li>
+                  <li>Chaque session est protégée par salle d'attente et mot de passe non public.</li>
+                  <li>Les sessions Zoom ne font l'objet d'aucun enregistrement vidéo public.</li>
+                  <li>Les enfants sont accompagnés avec bienveillance et douceur pour une prise de parole en toute confiance.</li>
                 </ul>
               </div>
 

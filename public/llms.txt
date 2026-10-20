@@ -4,7 +4,8 @@
 
 ## Identité & Éditeur
 - **Nom du service** : Sihscool
-- **Vocation** : Apprentissage phonétique et lecture de l'arabe (Méthode Nourania en 17 leçons, tajwîd, vocabulaire, devoirs de récitation vocale).
+- **Vocation** : Cours d'arabe littéraire et méthode Nourania en direct par visioconférence sur Zoom (séances interactives hebdomadaires de 1h30 par semaine en petits groupes bienveillants, tajwîd, devoirs de récitation vocale).
+- **Format d'enseignement** : 100 % en visioconférence Zoom en direct avec professeur qualifié (1h30/semaine) + plateforme numérique d'accompagnement.
 - **Public cible** : Élèves (enfants de 5 à 15 ans), Parents/Responsables légaux, Enseignants et Direction pédagogique.
 - **Directeur de la publication** : Cheikh Mohammed Al-Mansour
 - **Contact officiel** : direction@sihscool.fr

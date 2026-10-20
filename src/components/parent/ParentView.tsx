@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   ArrowRight,
   ShieldCheck,
+  Video,
 } from 'lucide-react';
 
 interface ParentViewProps {
@@ -159,9 +160,23 @@ export const ParentView: React.FC<ParentViewProps> = ({ currentTab, onNavigateTa
                 <h1 className="font-baloo font-extrabold text-2xl sm:text-3xl text-[#1B2A7A]">
                   {activeChild.prenom} {activeChild.nom}
                 </h1>
-                <p className="text-xs text-[#4A5487] font-baloo font-bold">
-                  Groupe : <span className="text-[#1B2A7A]">{childGroup?.nom || 'Nourania Débutants'}</span>
-                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 font-baloo">
+                  <p className="text-xs text-[#4A5487] font-bold">
+                    Groupe : <span className="text-[#1B2A7A]">{childGroup?.nom || 'Nourania Débutants'}</span>
+                  </p>
+                  <span className="badge-lavender text-[11px] !py-0.5 !px-2.5 font-bold">
+                    ⏱️ {childGroup?.creneau || '1h30 / semaine'}
+                  </span>
+                  <a
+                    href="https://zoom.us/join"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-pill-sun !min-h-[28px] !text-[11px] !py-0.5 !px-3 shadow-sm inline-flex items-center gap-1.5 hover:scale-105 transition-transform"
+                  >
+                    <Video className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+                    <span>Lien Visio Zoom</span>
+                  </a>
+                </div>
               </div>
             </div>
 

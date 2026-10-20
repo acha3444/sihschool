@@ -23,6 +23,7 @@ import {
   Info,
   X,
   ArrowRight,
+  Video,
 } from 'lucide-react';
 
 import { arabicAudio } from '../../utils/arabicAudio';
@@ -182,8 +183,21 @@ export const StudentView: React.FC<StudentViewProps> = ({ currentTab, onNavigate
                 </p>
                 <p className="text-xs text-[#4A5487] flex items-center gap-1.5 font-baloo font-medium">
                   <Info className="w-3.5 h-3.5 text-[#4A5487]" strokeWidth={2.5} />
-                  {studentGroup?.lieu_ou_lien || 'Salle Al-Qalam'}
+                  {studentGroup?.lieu_ou_lien || 'Visio en direct sur Zoom (1h30)'}
                 </p>
+              </div>
+
+              {/* Direct Zoom Join Button */}
+              <div className="pt-2">
+                <a
+                  href="https://zoom.us/join"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-pill-sun w-full !min-h-[42px] !text-xs !py-2 flex items-center justify-center gap-2 shadow-sm hover:scale-102 transition-transform"
+                >
+                  <Video className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+                  <span>Rejoindre la visio Zoom (1h30)</span>
+                </a>
               </div>
 
               {nextSession && (
