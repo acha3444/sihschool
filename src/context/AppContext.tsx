@@ -104,6 +104,16 @@ interface AppContextType {
   sendMessage: (conversationId: string, texte: string, audioUrl?: string) => void;
   createAnnonce: (annonceData: Omit<Annonce, 'id' | 'cree_le'>) => void;
   createEleve: (data: { prenom: string; nom: string; avatar: string; groupeId: string; parentId?: string; parentEmail?: string; telephoneParent?: string }) => User;
+  registerParentAndStudent: (data: {
+    parentPrenom: string;
+    parentNom: string;
+    parentEmail: string;
+    parentTelephone?: string;
+    studentPrenom: string;
+    studentNom: string;
+    studentAvatar: string;
+    groupeId: string;
+  }) => { parent: User; eleve: User };
   createGroupe: (data: Omit<Groupe, 'id'>) => Groupe;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -763,6 +773,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newEleve;
   };
 
+  const registerParentAndStudent = (data: {
+    parentPrenom: string;
+    parentNom: string;
+    parentEmail: string;
+    parentTelephone?: string;
+    studentPrenom: string;
+    studentNom: string;
+    studentAvatar: string;
+    groupeId: string;
+  }): { parent: User; eleve: User } => {
+    const cleanEmail = data.parentEmail.toLowerCase().trim();
+    const existingParent = users.find((u) => u.role === 'parent' && u.email?.toLowerCase().trim() === cleanEmail);
+
+    let parentUser: User;
+    if (existingParent) {
+      parentUser = existingParent;
+    } else {
+      parentUser = {
+        id: `user-parent-${Date.now()}`,
+        role: 'parent',
+        prenom: data.parentPrenom.trim(),
+        nom: data.parentNom.trim(),
+        email: cleanEmail,
+        telephone: data.parentTelephone?.trim() || undefined,
+        avatar: 'parent-yasmina',
+        cree_le: new Date().toISOString().split('T')[0],
+      };
+      setUsers((prev) => [...prev, parentUser]);
+      syncTableRecord('users', parentUser, 'insert');
+    }
+
+    const studentCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const newStudentId = `user-eleve-${Date.now()}`;
+    const studentUser: User = {
+      id: newStudentId,
+      role: 'eleve',
+      prenom: data.studentPrenom.trim(),
+      nom: data.studentNom.trim(),
+      code_connexion: studentCode,
+      avatar: data.studentAvatar || 'cat-mint',
+      cree_le: new Date().toISOString().split('T')[0],
+    };
+
+    setUsers((prev) => [...prev, studentUser]);
+    syncTableRecord('users', studentUser, 'insert');
+
+    // Link parent and child
+    const parentLink = { parent_id: parentUser.id, eleve_id: newStudentId };
+    setParentEleves((prev) => [...prev, parentLink]);
+    syncTableRecord('parent_eleves', parentLink, 'insert');
+
+    // Link group and student
+    const groupLink = { groupe_id: data.groupeId, eleve_id: newStudentId };
+    setGroupeEleves((prev) => [...prev, groupLink]);
+    syncTableRecord('groupe_eleves', groupLink, 'insert');
+
+    // Progression Nourania
+    const initialProg: Progression[] = [
+      { eleve_id: newStudentId, lecon_id: 'nourania-1', statut: 'en_cours' },
+      ...Array.from({ length: 16 }, (_, i) => ({
+        eleve_id: newStudentId,
+        lecon_id: `nourania-${i + 2}`,
+        statut: 'verrouillee' as const,
+      })),
+    ];
+    setProgressions((prev) => [...prev, ...initialProg]);
+    syncTableRecord('progressions', { eleve_id: newStudentId, lecon_id: 'nourania-1', statut: 'en_cours' }, 'insert');
+
+    // Automatically log parent in
+    setCurrentUser(parentUser);
+    setSelectedChildId(newStudentId);
+    localStorage.setItem('sihscool_current_user_id', parentUser.id);
+
+    triggerRewardConfetti();
+
+    return { parent: parentUser, eleve: studentUser };
+  };
+
   const createGroupe = (data: Omit<Groupe, 'id'>): Groupe => {
     const newId = `groupe-${Date.now()}`;
     const newG: Groupe = { ...data, id: newId };
@@ -876,6 +964,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sendMessage,
         createAnnonce,
         createEleve,
+        registerParentAndStudent,
         createGroupe,
         markNotificationRead,
         markAllNotificationsRead,

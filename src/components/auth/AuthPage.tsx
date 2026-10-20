@@ -12,17 +12,32 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  UserPlus,
+  Phone,
+  User as UserIcon,
 } from 'lucide-react';
 import { AVATAR_OPTIONS, AvatarDisplay } from '../common/AvatarDisplay';
 import { Sunburst, FloatingCloud } from '../common/Sunburst';
 
 export const AuthPage: React.FC = () => {
-  const { loginWithEmail, loginStudent, loginAs, users } = useApp();
+  const { loginWithEmail, loginStudent, loginAs, users, groupes, registerParentAndStudent } = useApp();
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [studentCode, setStudentCode] = useState('');
+
+  // Parent Registration State
+  const [parentAuthMode, setParentAuthMode] = useState<'login' | 'register'>('login');
+  const [regParentPrenom, setRegParentPrenom] = useState('');
+  const [regParentNom, setRegParentNom] = useState('');
+  const [regParentEmail, setRegParentEmail] = useState('');
+  const [regParentPhone, setRegParentPhone] = useState('');
+  const [regStudentPrenom, setRegStudentPrenom] = useState('');
+  const [regStudentNom, setRegStudentNom] = useState('');
+  const [regStudentGroupId, setRegStudentGroupId] = useState('');
+  const [regStudentAvatar, setRegStudentAvatar] = useState('cat-mint');
+  const [newRegistrationResult, setNewRegistrationResult] = useState<{ parent: any; eleve: any } | null>(null);
   const [selectedAvatarKey, setSelectedAvatarKey] = useState('cat-mint');
   const [errorMessage, setErrorMessage] = useState('');
   const [forgotPasswordModal, setForgotPasswordModal] = useState(false);
@@ -39,6 +54,33 @@ export const AuthPage: React.FC = () => {
     if (!success) {
       setErrorMessage('Identifiants incorrects ou compte introuvable pour ce profil.');
     }
+  };
+
+  const handleParentRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    if (
+      !regParentPrenom.trim() ||
+      !regParentNom.trim() ||
+      !regParentEmail.trim() ||
+      !regStudentPrenom.trim() ||
+      !regStudentNom.trim()
+    ) {
+      setErrorMessage('Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+    const groupId = regStudentGroupId || (groupes[0]?.id || 'groupe-1');
+    const result = registerParentAndStudent({
+      parentPrenom: regParentPrenom,
+      parentNom: regParentNom,
+      parentEmail: regParentEmail,
+      parentTelephone: regParentPhone,
+      studentPrenom: regStudentPrenom,
+      studentNom: regStudentNom,
+      studentAvatar: regStudentAvatar,
+      groupeId: groupId,
+    });
+    setNewRegistrationResult(result);
   };
 
   const handleStudentLogin = (e: React.FormEvent) => {
@@ -297,103 +339,317 @@ export const AuthPage: React.FC = () => {
             </form>
           </div>
         ) : (
-          /* ─── PARENT / TEACHER LOGIN (EMAIL + PASSWORD) ─── */
-          <div className="max-w-md mx-auto cloud-card p-6 sm:p-8 border-4 border-white shadow-cloud-pop animate-fadeIn space-y-6">
+          /* ─── PARENT / TEACHER LOGIN (EMAIL + PASSWORD) & PARENT REGISTRATION ─── */
+          <div className="max-w-lg mx-auto cloud-card p-6 sm:p-8 border-4 border-white shadow-cloud-pop animate-fadeIn space-y-6">
             <button
               onClick={() => {
                 setSelectedRole(null);
                 setErrorMessage('');
+                setParentAuthMode('login');
+                setNewRegistrationResult(null);
               }}
               className="inline-flex items-center gap-2 text-xs text-[#1B2A7A] hover:underline font-extrabold font-baloo"
             >
               <ArrowLeft className="w-4 h-4" strokeWidth={2.5} /> Retour au choix du profil
             </button>
 
-            <div className="text-center space-y-2">
-              <div
-                className={`w-16 h-16 rounded-[24px] flex items-center justify-center mx-auto shadow-sm ${
-                  selectedRole === 'parent' ? 'bg-[#CDBDF2] text-[#1B2A7A]' : 'bg-[#FFE15C] text-[#1B2A7A]'
-                }`}
-              >
-                {selectedRole === 'parent' ? (
-                  <Users className="w-8 h-8" strokeWidth={2.5} />
-                ) : (
-                  <GraduationCap className="w-8 h-8" strokeWidth={2.5} />
-                )}
-              </div>
-              <h2 className="font-baloo font-extrabold text-2xl text-[#1B2A7A]">
-                {selectedRole === 'parent' ? 'Connexion Espace Famille' : 'Connexion Enseignant & Direction'}
-              </h2>
-              <p className="text-xs text-[#4A5487] font-baloo">
-                Entrez votre adresse e-mail rattachée à l’école
-              </p>
-            </div>
-
-            {errorMessage && (
-              <div className="p-3.5 rounded-2xl bg-[#FFF0D4] border border-[#FFE15C] text-[#1B2A7A] text-xs flex items-center gap-2 font-baloo font-bold">
-                <AlertCircle className="w-4 h-4 text-[#E5483D] shrink-0" strokeWidth={2.5} />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleParentTeacherLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-extrabold font-baloo text-[#1B2A7A] block">
-                  Adresse e-mail
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" strokeWidth={2.5} />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={
-                      selectedRole === 'parent' ? 'yasmina.benali@gmail.com' : 'direction@sihscool.fr ou fatima@sihscool.fr'
-                    }
-                    className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-xs font-baloo font-bold"
-                  />
+            {newRegistrationResult ? (
+              <div className="space-y-6 text-center animate-fadeIn py-2">
+                <div className="w-16 h-16 rounded-[24px] bg-[#58CC02]/20 text-[#2B7A00] flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
                 </div>
-                {selectedRole === 'prof' && (
-                  <p className="text-[11px] text-[#4A5487] pl-2 font-baloo">
-                    Pour l'espace Direction / Administrateur : <strong className="text-[#1B2A7A]">direction@sihscool.fr</strong>
+                <div className="space-y-1">
+                  <h3 className="font-baloo font-extrabold text-2xl text-[#1B2A7A]">
+                    Bienvenue dans la famille Sihscool ! 🎉
+                  </h3>
+                  <p className="text-xs text-[#4A5487] font-baloo">
+                    L'inscription de <strong>{newRegistrationResult.eleve.prenom} {newRegistrationResult.eleve.nom}</strong> a bien été enregistrée.
                   </p>
-                )}
-              </div>
+                </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold font-baloo text-[#1B2A7A]">
-                    Mot de passe
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setForgotPasswordModal(true)}
-                    className="text-[11px] text-[#1B2A7A] hover:underline font-baloo font-bold"
+                <div className="p-4 rounded-3xl bg-[#FFF6E3] border-2 border-[#FFE15C] space-y-2">
+                  <p className="text-xs text-[#8C6D00] font-baloo font-extrabold uppercase">
+                    Code secret écolier de {newRegistrationResult.eleve.prenom} :
+                  </p>
+                  <p className="font-mono text-3xl font-black text-[#1B2A7A] tracking-[0.25em]">
+                    {newRegistrationResult.eleve.code_connexion}
+                  </p>
+                  <p className="text-[11px] text-[#4A5487] font-baloo">
+                    Votre enfant utilisera ce code à 6 chiffres et son avatar ({newRegistrationResult.eleve.avatar}) pour se connecter à son carnet de cours.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => loginAs(newRegistrationResult.parent)}
+                  className="btn-pill-sun w-full"
+                >
+                  <span>Accéder à mon Espace Famille</span>
+                  <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="text-center space-y-2">
+                  <div
+                    className={`w-16 h-16 rounded-[24px] flex items-center justify-center mx-auto shadow-sm ${
+                      selectedRole === 'parent' ? 'bg-[#CDBDF2] text-[#1B2A7A]' : 'bg-[#FFE15C] text-[#1B2A7A]'
+                    }`}
                   >
-                    Mot de passe oublié ?
-                  </button>
+                    {selectedRole === 'parent' ? (
+                      <Users className="w-8 h-8" strokeWidth={2.5} />
+                    ) : (
+                      <GraduationCap className="w-8 h-8" strokeWidth={2.5} />
+                    )}
+                  </div>
+                  <h2 className="font-baloo font-extrabold text-2xl text-[#1B2A7A]">
+                    {selectedRole === 'parent'
+                      ? parentAuthMode === 'login'
+                        ? 'Connexion Espace Famille'
+                        : 'Inscription Famille & Inscription Enfant'
+                      : 'Connexion Enseignant & Direction'}
+                  </h2>
+                  <p className="text-xs text-[#4A5487] font-baloo">
+                    {selectedRole === 'parent'
+                      ? parentAuthMode === 'login'
+                        ? 'Entrez votre adresse e-mail rattachée à l’école'
+                        : 'Inscrivez votre enfant pour démarrer l’apprentissage de l’arabe et la méthode Nourania'
+                      : 'Entrez votre adresse e-mail rattachée à l’école'}
+                  </p>
                 </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" strokeWidth={2.5} />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-xs font-baloo font-bold"
-                  />
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                className={`w-full ${selectedRole === 'parent' ? 'btn-pill-sun' : 'btn-pill-sun'}`}
-              >
-                <span>Accéder à mon tableau de bord</span>
-                <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-              </button>
-            </form>
+                {/* Segmented Switcher for Parent: Connexion vs Inscription */}
+                {selectedRole === 'parent' && (
+                  <div className="flex rounded-full bg-[#EAF2F8] p-1 border border-[#CDBDF2]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setParentAuthMode('login');
+                        setErrorMessage('');
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-full text-xs font-baloo font-extrabold transition-all ${
+                        parentAuthMode === 'login'
+                          ? 'bg-[#FFFFFF] text-[#1B2A7A] shadow-sm'
+                          : 'text-[#4A5487] hover:text-[#1B2A7A]'
+                      }`}
+                    >
+                      Se connecter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setParentAuthMode('register');
+                        setErrorMessage('');
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-full text-xs font-baloo font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                        parentAuthMode === 'register'
+                          ? 'bg-[#FFE15C] text-[#1B2A7A] shadow-sm'
+                          : 'text-[#4A5487] hover:text-[#1B2A7A]'
+                      }`}
+                    >
+                      <UserPlus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                      Première inscription
+                    </button>
+                  </div>
+                )}
+
+                {errorMessage && (
+                  <div className="p-3.5 rounded-2xl bg-[#FFF0D4] border border-[#FFE15C] text-[#1B2A7A] text-xs flex items-center gap-2 font-baloo font-bold">
+                    <AlertCircle className="w-4 h-4 text-[#E5483D] shrink-0" strokeWidth={2.5} />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                {/* PARENT LOGIN FORM */}
+                {(selectedRole !== 'parent' || parentAuthMode === 'login') && (
+                  <form onSubmit={handleParentTeacherLogin} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-extrabold font-baloo text-[#1B2A7A] block">
+                        Adresse e-mail
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" strokeWidth={2.5} />
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder={
+                            selectedRole === 'parent' ? 'yasmina.benali@gmail.com' : 'direction@sihscool.fr ou fatima@sihscool.fr'
+                          }
+                          className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-xs font-baloo font-bold"
+                        />
+                      </div>
+                      {selectedRole === 'prof' && (
+                        <p className="text-[11px] text-[#4A5487] pl-2 font-baloo">
+                          Pour l'espace Direction / Administrateur : <strong className="text-[#1B2A7A]">direction@sihscool.fr</strong>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-extrabold font-baloo text-[#1B2A7A]">
+                          Mot de passe
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setForgotPasswordModal(true)}
+                          className="text-[11px] text-[#1B2A7A] hover:underline font-baloo font-bold"
+                        >
+                          Mot de passe oublié ?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" strokeWidth={2.5} />
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••••••"
+                          className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-xs font-baloo font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className={`w-full ${selectedRole === 'parent' ? 'btn-pill-sun' : 'btn-pill-sun'}`}
+                    >
+                      <span>Accéder à mon tableau de bord</span>
+                      <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                    </button>
+                  </form>
+                )}
+
+                {/* PARENT REGISTRATION FORM */}
+                {selectedRole === 'parent' && parentAuthMode === 'register' && (
+                  <form onSubmit={handleParentRegister} className="space-y-4">
+                    {/* Responsable Legal */}
+                    <div className="p-4 rounded-3xl bg-[#FFFFFF] border border-[#CDBDF2] space-y-3">
+                      <span className="text-xs font-extrabold font-baloo text-[#1B2A7A] flex items-center gap-1.5">
+                        <UserIcon className="w-4 h-4 text-[#CDBDF2]" strokeWidth={2.5} />
+                        1. Vos coordonnées (Parent / Tuteur)
+                      </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input
+                          type="text"
+                          required
+                          value={regParentPrenom}
+                          onChange={(e) => setRegParentPrenom(e.target.value)}
+                          placeholder="Votre prénom"
+                          className="py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none focus:border-[#FFE15C]"
+                        />
+                        <input
+                          type="text"
+                          required
+                          value={regParentNom}
+                          onChange={(e) => setRegParentNom(e.target.value)}
+                          placeholder="Votre nom de famille"
+                          className="py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none focus:border-[#FFE15C]"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input
+                          type="email"
+                          required
+                          value={regParentEmail}
+                          onChange={(e) => setRegParentEmail(e.target.value)}
+                          placeholder="Votre adresse e-mail"
+                          className="py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none focus:border-[#FFE15C]"
+                        />
+                        <input
+                          type="tel"
+                          value={regParentPhone}
+                          onChange={(e) => setRegParentPhone(e.target.value)}
+                          placeholder="Téléphone (ex: 06 12 34 56 78)"
+                          className="py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none focus:border-[#FFE15C]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Enfant à inscrire */}
+                    <div className="p-4 rounded-3xl bg-[#FFFFFF] border border-[#CDBDF2] space-y-3">
+                      <span className="text-xs font-extrabold font-baloo text-[#1B2A7A] flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-[#FFE15C]" strokeWidth={2.5} />
+                        2. L'enfant à inscrire
+                      </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input
+                          type="text"
+                          required
+                          value={regStudentPrenom}
+                          onChange={(e) => setRegStudentPrenom(e.target.value)}
+                          placeholder="Prénom de l'enfant"
+                          className="py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none focus:border-[#FFE15C]"
+                        />
+                        <input
+                          type="text"
+                          required
+                          value={regStudentNom}
+                          onChange={(e) => setRegStudentNom(e.target.value)}
+                          placeholder="Nom de l'enfant"
+                          className="py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none focus:border-[#FFE15C]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold font-baloo text-[#4A5487] block">
+                          Classe / Groupe souhaité :
+                        </label>
+                        <select
+                          value={regStudentGroupId}
+                          onChange={(e) => setRegStudentGroupId(e.target.value)}
+                          className="w-full py-2.5 px-4 rounded-full bg-[#F8FAFC] border-2 border-[#CDBDF2] text-xs font-baloo font-bold focus:outline-none text-[#1B2A7A]"
+                        >
+                          {groupes.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.nom} ({g.creneau})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-extrabold font-baloo text-[#4A5487] block">
+                          Avatar animal pour son cahier :
+                        </label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {AVATAR_OPTIONS.slice(0, 4).map((av) => (
+                            <button
+                              key={av.id}
+                              type="button"
+                              onClick={() => setRegStudentAvatar(av.id)}
+                              className={`p-2 rounded-2xl flex flex-col items-center gap-1 border-2 transition-all ${
+                                regStudentAvatar === av.id
+                                  ? 'border-[#FFE15C] bg-[#FFF6E3] shadow-sun-glow'
+                                  : 'border-transparent bg-[#F8FAFC] hover:bg-white'
+                              }`}
+                            >
+                              <AvatarDisplay avatarKey={av.id} size="sm" />
+                              <span className="text-[10px] font-baloo font-bold text-[#1B2A7A]">
+                                {av.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn-pill-sun w-full !text-sm"
+                    >
+                      <UserPlus className="w-4 h-4" strokeWidth={2.5} />
+                      <span>Inscrire mon enfant & Créer mon espace</span>
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
           </div>
         )}
       </main>
