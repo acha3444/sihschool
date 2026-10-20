@@ -29,6 +29,8 @@ import {
   ArrowRight,
   Database,
   Cloud,
+  Copy,
+  CheckCheck,
 } from 'lucide-react';
 
 interface TeacherViewProps {
@@ -93,7 +95,10 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
   const [newStudentAvatar, setNewStudentAvatar] = useState('falcon-mint');
   const [newStudentGroupId, setNewStudentGroupId] = useState('groupe-1');
   const [newStudentParentEmail, setNewStudentParentEmail] = useState('');
-  const [createdStudentResult, setCreatedStudentResult] = useState<User | null>(null);
+  const [createdStudentResult, setCreatedStudentResult] = useState<
+    (User & { parent?: User; motDePasseTemporaire?: string | null }) | null
+  >(null);
+  const [copiedParentMsg, setCopiedParentMsg] = useState(false);
 
   const [newGroupNom, setNewGroupNom] = useState('');
   const [newGroupType, setNewGroupType] = useState<'nourania' | 'litteraire' | 'mixte'>('nourania');
@@ -180,6 +185,17 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
     setNewStudentPrenom('');
     setNewStudentNom('');
     setNewStudentParentEmail('');
+  };
+
+  const handleCopyParentInvitation = () => {
+    if (!createdStudentResult) return;
+    const parentEmail = createdStudentResult.parent?.email || newStudentParentEmail;
+    const tempPass = createdStudentResult.motDePasseTemporaire;
+    const origin = window.location.origin;
+    const msg = `Assalamu alaykum ! L'inscription de ${createdStudentResult.prenom} à l'école Sihscool est validée.\n\n📱 Espace Famille : ${origin}\nIdentifiant e-mail : ${parentEmail}\nMot de passe temporaire : ${tempPass || 'Votre mot de passe habituel'}\n(Il vous sera demandé de définir votre propre mot de passe à la 1ère connexion)\n\n🎒 Espace Écolier pour ${createdStudentResult.prenom} :\nCode secret à 6 chiffres : ${createdStudentResult.code_connexion}`;
+    navigator.clipboard.writeText(msg);
+    setCopiedParentMsg(true);
+    setTimeout(() => setCopiedParentMsg(false), 3000);
   };
 
   const handleCreateGroupSubmit = (e: React.FormEvent) => {
@@ -905,24 +921,66 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
             </form>
 
             {createdStudentResult && (
-              <div className="p-5 rounded-3xl bg-[#FFFFFF] border-2 border-[#FFE15C] space-y-2 shadow-soft-blue animate-fadeIn font-baloo">
+              <div className="p-5 rounded-3xl bg-[#FFFFFF] border-2 border-[#FFE15C] space-y-4 shadow-soft-blue animate-fadeIn font-baloo">
                 <div className="flex items-center gap-3">
                   <AvatarDisplay avatarKey={createdStudentResult.avatar} size="md" />
                   <div>
                     <h4 className="font-extrabold text-base text-[#1B2A7A]">
-                      Élève créé : {createdStudentResult.prenom} {createdStudentResult.nom}
+                      Élève inscrit : {createdStudentResult.prenom} {createdStudentResult.nom}
                     </h4>
                     <p className="text-xs text-[#4A5487]">
-                      Code secret à 6 chiffres pour se connecter sans email :
+                      Compte écolier & accès parent créés avec succès.
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-[#FFF6E3] border-2 border-[#FFE15C] flex items-center justify-center text-center">
-                  <span className="font-mono text-3xl font-black text-[#1B2A7A] tracking-widest">
-                    {createdStudentResult.code_connexion}
-                  </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Code Eleve */}
+                  <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] space-y-1">
+                    <span className="text-[11px] text-[#8C6D00] uppercase font-extrabold block">
+                      Code secret écolier (6 chiffres) :
+                    </span>
+                    <span className="font-mono text-2xl font-black text-[#1B2A7A] tracking-widest block">
+                      {createdStudentResult.code_connexion}
+                    </span>
+                    <p className="text-[10px] text-[#4A5487]">
+                      À utiliser avec l'avatar pour l'espace écolier.
+                    </p>
+                  </div>
+
+                  {/* Mot de passe temporaire parent */}
+                  <div className="p-3.5 rounded-2xl bg-[#EAF2F8] border border-[#CDBDF2] space-y-1">
+                    <span className="text-[11px] text-[#1B2A7A] uppercase font-extrabold block">
+                      Mot de passe temporaire parent :
+                    </span>
+                    <span className="font-mono text-2xl font-black text-[#E5483D] tracking-wider block">
+                      {createdStudentResult.motDePasseTemporaire || 'Compte parent déjà actif'}
+                    </span>
+                    <p className="text-[10px] text-[#4A5487]">
+                      {createdStudentResult.motDePasseTemporaire
+                        ? 'Usage unique : le parent devra le changer à sa 1ère connexion.'
+                        : 'Ce parent utilise son mot de passe existant.'}
+                    </p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyParentInvitation}
+                  className="btn-cloud-secondary w-full text-xs py-2.5 flex items-center justify-center gap-2 font-extrabold"
+                >
+                  {copiedParentMsg ? (
+                    <>
+                      <CheckCheck className="w-4 h-4 text-[#2B7A00]" strokeWidth={2.5} />
+                      <span className="text-[#2B7A00]">Message d'invitation copié dans le presse-papier !</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" strokeWidth={2.5} />
+                      <span>Copier le message d'invitation & identifiants pour le parent</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>

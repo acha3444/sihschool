@@ -13,8 +13,14 @@ CREATE TABLE IF NOT EXISTS public.users (
   avatar TEXT DEFAULT 'cat-mint',
   telephone TEXT,
   code_connexion TEXT,
+  mot_de_passe TEXT,
+  doit_changer_mot_de_passe BOOLEAN DEFAULT false,
   cree_le TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+
+-- Migrations sécurisées si la table existe déjà
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS mot_de_passe TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS doit_changer_mot_de_passe BOOLEAN DEFAULT false;
 
 -- 2. Table Groupes / Classes de cours
 CREATE TABLE IF NOT EXISTS public.groupes (

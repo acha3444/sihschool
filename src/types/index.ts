@@ -8,6 +8,8 @@ export interface User {
   email?: string;
   avatar: string;
   code_connexion?: string; // 6-digit code for kids student login
+  mot_de_passe?: string; // Password or temporary one-time password (OTP)
+  doit_changer_mot_de_passe?: boolean; // True if temporary password must be changed on first login
   telephone?: string;
   cree_le: string;
 }

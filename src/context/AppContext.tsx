@@ -54,7 +54,12 @@ interface AppContextType {
   // Auth
   currentUser: User | null;
   loginAs: (user: User) => void;
-  loginWithEmail: (email: string, role: UserRole) => boolean;
+  loginWithEmail: (
+    email: string,
+    password?: string,
+    role?: UserRole
+  ) => { success: boolean; user?: User; requiresPasswordChange?: boolean; error?: string };
+  updateUserPassword: (userId: string, newPassword: string) => void;
   loginStudent: (code: string, avatar: string) => boolean;
   logout: () => void;
   switchRole: (role: UserRole) => void;
@@ -103,7 +108,15 @@ interface AppContextType {
   markPaiement: (paiementId: string, statut: PaiementStatut, moyen?: string) => void;
   sendMessage: (conversationId: string, texte: string, audioUrl?: string) => void;
   createAnnonce: (annonceData: Omit<Annonce, 'id' | 'cree_le'>) => void;
-  createEleve: (data: { prenom: string; nom: string; avatar: string; groupeId: string; parentId?: string; parentEmail?: string; telephoneParent?: string }) => User;
+  createEleve: (data: {
+    prenom: string;
+    nom: string;
+    avatar: string;
+    groupeId: string;
+    parentId?: string;
+    parentEmail?: string;
+    telephoneParent?: string;
+  }) => User & { parent?: User; motDePasseTemporaire?: string | null };
   registerParentAndStudent: (data: {
     parentPrenom: string;
     parentNom: string;
@@ -247,18 +260,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginWithEmail = (email: string, role: UserRole): boolean => {
+  const loginWithEmail = (
+    email: string,
+    password?: string,
+    role?: UserRole
+  ): { success: boolean; user?: User; requiresPasswordChange?: boolean; error?: string } => {
     const cleanEmail = email.toLowerCase().trim();
     const user = users.find(
       (u) =>
         u.email?.toLowerCase().trim() === cleanEmail &&
-        (u.role === role || (role === 'prof' && u.role === 'admin') || u.role === 'admin')
+        (role ? (u.role === role || (role === 'prof' && u.role === 'admin') || u.role === 'admin') : true)
     );
-    if (user) {
-      loginAs(user);
-      return true;
+
+    if (!user) {
+      return { success: false, error: 'Compte introuvable pour cette adresse e-mail.' };
     }
-    return false;
+
+    // If password is set on the user and provided in form, check it
+    if (user.mot_de_passe && password) {
+      if (user.mot_de_passe.trim() !== password.trim()) {
+        return {
+          success: false,
+          error: 'Mot de passe incorrect. Veuillez vérifier le mot de passe temporaire transmis par l’école.',
+        };
+      }
+    }
+
+    // Check if temporary password requires change on first login
+    if (user.doit_changer_mot_de_passe) {
+      return { success: true, user, requiresPasswordChange: true };
+    }
+
+    loginAs(user);
+    return { success: true, user, requiresPasswordChange: false };
+  };
+
+  const updateUserPassword = (userId: string, newPassword: string) => {
+    const cleanPass = newPassword.trim();
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, mot_de_passe: cleanPass, doit_changer_mot_de_passe: false }
+          : u
+      )
+    );
+    setCurrentUser((prev) =>
+      prev && prev.id === userId
+        ? { ...prev, mot_de_passe: cleanPass, doit_changer_mot_de_passe: false }
+        : prev
+    );
+    // Sync to Supabase Cloud
+    syncTableRecord('users', {
+      id: userId,
+      mot_de_passe: cleanPass,
+      doit_changer_mot_de_passe: false,
+    });
   };
 
   const loginStudent = (code: string, avatar: string): boolean => {
@@ -712,7 +768,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     parentId?: string;
     parentEmail?: string;
     telephoneParent?: string;
-  }): User => {
+  }): User & { parent?: User; motDePasseTemporaire?: string | null } => {
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const newId = `user-eleve-${Date.now()}`;
@@ -727,9 +783,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setUsers((prev) => [...prev, newEleve]);
+    syncTableRecord('users', newEleve, 'insert');
 
     // Attach to group
-    setGroupeEleves((prev) => [...prev, { groupe_id: data.groupeId, eleve_id: newId }]);
+    const grpLink = { groupe_id: data.groupeId, eleve_id: newId };
+    setGroupeEleves((prev) => [...prev, grpLink]);
+    syncTableRecord('groupe_eleves', grpLink, 'insert');
 
     // Initialize Nourania progression (1st lesson en_cours, others locked)
     const initialProg: Progression[] = [
@@ -741,36 +800,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })),
     ];
     setProgressions((prev) => [...prev, ...initialProg]);
+    syncTableRecord('progressions', { eleve_id: newId, lecon_id: 'nourania-1', statut: 'en_cours' }, 'insert');
 
-    // Attach or create parent
+    // Attach or create parent with OTP temporary password
     let pId = data.parentId;
+    let tempPassword: string | null = null;
+    let parentUser: User | undefined;
+
     if (!pId && data.parentEmail) {
-      // Check if parent email exists
-      const existingParent = users.find((u) => u.role === 'parent' && u.email === data.parentEmail);
+      const cleanParentEmail = data.parentEmail.toLowerCase().trim();
+      const existingParent = users.find(
+        (u) => u.role === 'parent' && u.email?.toLowerCase().trim() === cleanParentEmail
+      );
       if (existingParent) {
         pId = existingParent.id;
+        parentUser = existingParent;
       } else {
+        // Generate random 8-character easy OTP: SIH-XXXX
+        tempPassword = `SIH-${Math.floor(1000 + Math.random() * 9000)}`;
         const newParentId = `user-parent-${Date.now()}`;
         const newParent: User = {
           id: newParentId,
           role: 'parent',
           prenom: 'Parent de',
           nom: data.prenom,
-          email: data.parentEmail,
+          email: cleanParentEmail,
           telephone: data.telephoneParent,
-          avatar: 'parent-generic',
+          mot_de_passe: tempPassword,
+          doit_changer_mot_de_passe: true,
+          avatar: 'parent-yasmina',
           cree_le: new Date().toISOString().split('T')[0],
         };
         setUsers((prev) => [...prev, newParent]);
+        syncTableRecord('users', newParent, 'insert');
         pId = newParentId;
+        parentUser = newParent;
       }
     }
 
     if (pId) {
-      setParentEleves((prev) => [...prev, { parent_id: pId!, eleve_id: newId }]);
+      const pLink = { parent_id: pId, eleve_id: newId };
+      setParentEleves((prev) => [...prev, pLink]);
+      syncTableRecord('parent_eleves', pLink, 'insert');
     }
 
-    return newEleve;
+    return Object.assign(newEleve, {
+      parent: parentUser,
+      motDePasseTemporaire: tempPassword,
+    });
   };
 
   const registerParentAndStudent = (data: {
@@ -923,6 +1000,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         loginAs,
         loginWithEmail,
+        updateUserPassword,
         loginStudent,
         logout,
         switchRole,
