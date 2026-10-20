@@ -212,8 +212,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginWithEmail = (email: string, role: UserRole): boolean => {
+    const cleanEmail = email.toLowerCase().trim();
     const user = users.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase() && (u.role === role || (role === 'admin' && u.role === 'admin'))
+      (u) =>
+        u.email?.toLowerCase().trim() === cleanEmail &&
+        (u.role === role || (role === 'prof' && u.role === 'admin') || u.role === 'admin')
     );
     if (user) {
       loginAs(user);

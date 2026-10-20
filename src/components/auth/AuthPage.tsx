@@ -178,7 +178,7 @@ export const AuthPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Card 3: Prof */}
+              {/* Card 3: Prof / Direction */}
               <div className="cloud-card p-6 sm:p-7 flex flex-col items-center text-center justify-between border-2 border-white hover:border-[#FFE15C] transition-all duration-200 hover:-translate-y-1">
                 <div className="relative mb-3">
                   <div className="w-20 h-20 rounded-[28px] bg-[#BAE2F8] flex items-center justify-center text-[#1B2A7A] shadow-soft-blue">
@@ -189,13 +189,13 @@ export const AuthPage: React.FC = () => {
 
                 <div className="space-y-1 my-2">
                   <h2 className="font-baloo font-extrabold text-2xl text-[#1B2A7A]">
-                    Je suis prof
+                    Prof & Direction
                   </h2>
                   <p className="font-arabic text-2xl text-[#E5483D] font-bold" dir="rtl">
-                    أَنَا أُسْتَاذ
+                    أُسْتَاذ / إِدَارَة
                   </p>
                   <p className="text-xs text-[#4A5487] leading-relaxed font-baloo">
-                    Faites l’appel en 1 clic, validez les leçons avec confettis et enregistrez des modèles audio.
+                    Faites l’appel en 1 clic, validez les leçons, corrigez les devoirs et gérez l'école.
                   </p>
                 </div>
 
@@ -207,7 +207,7 @@ export const AuthPage: React.FC = () => {
                   }}
                   className="btn-pill-white w-full mt-4"
                 >
-                  <span>Espace Enseignant</span>
+                  <span>Espace Enseignant & Admin</span>
                   <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
                 </button>
               </div>
@@ -349,11 +349,16 @@ export const AuthPage: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={
-                      selectedRole === 'parent' ? 'yasmina.benali@gmail.com' : 'fatima@sihscool.fr'
+                      selectedRole === 'parent' ? 'yasmina.benali@gmail.com' : 'direction@sihscool.fr ou fatima@sihscool.fr'
                     }
                     className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-xs font-baloo font-bold"
                   />
                 </div>
+                {selectedRole === 'prof' && (
+                  <p className="text-[11px] text-[#4A5487] pl-2 font-baloo">
+                    Pour l'espace Direction / Administrateur : <strong className="text-[#1B2A7A]">direction@sihscool.fr</strong>
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -449,7 +454,20 @@ export const AuthPage: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="max-w-4xl mx-auto w-full text-center py-3 border-t border-[#CDBDF2]/40 text-xs text-[#4A5487] font-baloo relative z-10">
+      <footer className="max-w-4xl mx-auto w-full text-center py-4 border-t border-[#CDBDF2]/40 text-xs text-[#4A5487] font-baloo relative z-10 space-y-2">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole('prof');
+              setEmail('direction@sihscool.fr');
+            }}
+            className="hover:text-[#1B2A7A] hover:underline flex items-center gap-1 font-bold text-[11px] bg-[#FFFFFF]/80 px-3.5 py-1.5 rounded-full border border-[#CDBDF2] shadow-sm transition-all"
+          >
+            <span>Accès Direction & Administration</span>
+            <ArrowRight className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+          </button>
+        </div>
         <p>Sihscool © 2026 · Espace d’apprentissage doux et rassurant pour toute la famille.</p>
       </footer>
     </div>
