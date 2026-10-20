@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,7 +44,25 @@ export const LoginPage: React.FC = () => {
 
     if (!result.success) {
       setErrorMessage(result.error || 'Identifiants incorrects.');
+      return;
     }
+
+    // Si la connexion a réussi, vérifier le profil
+    const { data: profileCheck } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', (await supabase.auth.getUser()).data.user?.id)
+      .maybeSingle();
+
+    if (!profileCheck) {
+      setErrorMessage('Compte connecté mais aucun profil trouvé dans la base de données. Veuillez créer votre ligne profile.');
+      return;
+    }
+
+    if (profileCheck.role === 'admin') navigate('/admin', { replace: true });
+    else if (profileCheck.role === 'parent') navigate('/famille', { replace: true });
+    else if (profileCheck.role === 'eleve') navigate('/eleve', { replace: true });
+    else navigate('/admin', { replace: true });
   };
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
