@@ -25,3 +25,8 @@ dist-ssr
 
 # Cloudflared binaries
 cloudflared*
+
+# Environment files
+.env
+.env.*
+!.env.example
