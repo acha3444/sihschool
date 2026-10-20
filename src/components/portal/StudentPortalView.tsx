@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Eleve, Groupe, Seance, Presence, Progression, Devoir, Appreciation, Paiement, Annonce } from '../../types/database';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Eleve, Groupe, Seance, Presence, Progression, Devoir, DevoirRendu, Appreciation, Paiement, Annonce } from '../../types/database';
+import { AudioRecorder } from '../common/AudioRecorder';
+import { AudioPlayer } from '../common/AudioPlayer';
 import { 
   Video, 
   MessageCircle, 
@@ -14,7 +17,10 @@ import {
   Megaphone, 
   Award,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Mic,
+  Send,
+  Sparkles
 } from 'lucide-react';
 
 interface StudentPortalViewProps {
@@ -43,8 +49,88 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   annonces,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('accueil');
+  const [rendus, setRendus] = useState<Record<string, DevoirRendu>>({});
+  const [tempAudio, setTempAudio] = useState<Record<string, { base64: string; duration: number }>>({});
+  const [tempCommentaire, setTempCommentaire] = useState<Record<string, string>>({});
+  const [submittingDevoirId, setSubmittingDevoirId] = useState<string | null>(null);
+  const [isReRecording, setIsReRecording] = useState<Record<string, boolean>>({});
 
   const WHATSAPP_URL = 'https://wa.me/33757589112';
+
+  // Charger les devoirs rendus pour cet élève
+  const loadRendus = async () => {
+    if (!eleve?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('devoir_rendus')
+        .select('*')
+        .eq('eleve_id', eleve.id);
+
+      if (error) {
+        console.warn('Erreur chargement devoirs rendus (la table existe-t-elle ?)', error);
+        return;
+      }
+
+      if (data) {
+        const map: Record<string, DevoirRendu> = {};
+        data.forEach((r: DevoirRendu) => {
+          map[r.devoir_id] = r;
+        });
+        setRendus(map);
+      }
+    } catch (err) {
+      console.warn('Erreur chargement rendus:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadRendus();
+  }, [eleve?.id]);
+
+  // Envoyer un enregistrement audio pour un devoir
+  const handleSubmitAudioRendu = async (devoirId: string) => {
+    const audioData = tempAudio[devoirId];
+    if (!audioData || !audioData.base64) {
+      alert('Veuillez d\'abord enregistrer votre note vocale avant d\'envoyer.');
+      return;
+    }
+
+    setSubmittingDevoirId(devoirId);
+    try {
+      const { data, error } = await supabase
+        .from('devoir_rendus')
+        .upsert(
+          {
+            devoir_id: devoirId,
+            eleve_id: eleve.id,
+            audio_url: audioData.base64,
+            duree_secondes: audioData.duration || 5,
+            commentaire_eleve: tempCommentaire[devoirId] || null,
+            statut: 'en_attente',
+          },
+          { onConflict: 'devoir_id,eleve_id' }
+        )
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setRendus((prev) => ({ ...prev, [devoirId]: data as DevoirRendu }));
+        setIsReRecording((prev) => ({ ...prev, [devoirId]: false }));
+        // Nettoyer temp
+        setTempAudio((prev) => {
+          const next = { ...prev };
+          delete next[devoirId];
+          return next;
+        });
+      }
+    } catch (err: any) {
+      alert('Erreur lors de l\'envoi du devoir : ' + (err.message || 'Problème de connexion'));
+    } finally {
+      setSubmittingDevoirId(null);
+    }
+  };
 
   // Format date helper
   const formatDate = (dateStr: string) => {
@@ -374,59 +460,241 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         </div>
       )}
 
-      {/* TAB: DEVOIRS */}
+      {/* TAB: DEVOIRS AVEC NOTE VOCALE */}
       {activeTab === 'devoirs' && (
         <div className="space-y-6">
           {/* Devoirs à faire */}
-          <div className="cloud-card p-6">
-            <h3 className="text-lg md:text-xl font-black text-[#1B2A7A] mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#1B2A7A]" />
-              Devoirs à préparer
-            </h3>
+          <div className="cloud-card p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#CDBDF2]/40 pb-3">
+              <div>
+                <h3 className="text-lg md:text-xl font-black text-[#1B2A7A] flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#1B2A7A]" />
+                  Devoirs & Récitations vocales
+                </h3>
+                <p className="text-xs text-[#4A5487] font-semibold">
+                  Écoutez les consignes et enregistrez votre récitation pour l'envoyer à votre enseignante.
+                </p>
+              </div>
+              <span className="badge-lavender text-xs font-black uppercase">
+                {devoirsAFaire.length} devoir(s) en cours
+              </span>
+            </div>
 
             {devoirsAFaire.length === 0 ? (
-              <div className="text-center py-8 bg-white/50 rounded-2xl border border-dashed border-gray-200">
-                <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                <p className="text-base text-gray-500 font-medium">Aucun devoir pour le moment</p>
-                <p className="text-sm text-gray-400">Bravo ! Tout est à jour.</p>
+              <div className="text-center py-10 bg-white/50 rounded-2xl border border-dashed border-gray-200 space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                <p className="text-base text-gray-700 font-bold">Aucun devoir à rendre pour le moment</p>
+                <p className="text-xs text-gray-500">Bravo ! Tout est à jour.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {devoirsAFaire.map((d) => (
-                  <div key={d.id} className="p-4 rounded-2xl bg-white border-2 border-[#FFE15C] space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="font-black text-base text-[#1B2A7A]">{d.titre}</h4>
-                      {d.date_limite && (
-                        <span className="text-xs font-bold text-amber-900 bg-[#FFE15C] px-3 py-1 rounded-full">
-                          À rendre pour le {formatDate(d.date_limite)}
-                        </span>
+              <div className="space-y-6">
+                {devoirsAFaire.map((d) => {
+                  const rendu = rendus[d.id];
+                  const reRecording = isReRecording[d.id];
+                  const hasRecorded = !!tempAudio[d.id];
+                  const isSubmitting = submittingDevoirId === d.id;
+
+                  return (
+                    <div
+                      key={d.id}
+                      className="p-5 rounded-3xl bg-white border-2 border-[#FFE15C] shadow-soft-blue space-y-4"
+                    >
+                      {/* En-tête devoir */}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="space-y-1">
+                          <span className="badge-sun text-[10px] font-black uppercase">
+                            Exercice obligatoire
+                          </span>
+                          <h4 className="font-black text-lg text-[#1B2A7A]">{d.titre}</h4>
+                        </div>
+
+                        {d.date_limite && (
+                          <span className="text-xs font-bold text-[#854D0E] bg-[#FFF6E3] px-3 py-1 rounded-full border border-[#FFE15C]">
+                            À rendre pour le {formatDate(d.date_limite)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Consignes textuelles */}
+                      <div className="p-4 rounded-2xl bg-[#FFFBF0] border border-[#FFE15C]/60 text-sm text-[#1B2A7A] whitespace-pre-line leading-relaxed font-medium">
+                        {d.consigne}
+                      </div>
+
+                      {/* Consigne audio de l'enseignante (si fournie) */}
+                      {d.audio_consigne && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-black text-[#1B2A7A] flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-[#1B2A7A]" />
+                            <span>Modèle de récitation de l'enseignante :</span>
+                          </p>
+                          <AudioPlayer
+                            src={d.audio_consigne}
+                            label="Écouter la consigne / prononciation modèle"
+                            className="bg-[#FFF6E3] border-[#FFE15C]"
+                          />
+                        </div>
                       )}
+
+                      {/* SECTION RENDU VOCAL DE L'ÉLÈVE */}
+                      <div className="pt-2 border-t border-[#CDBDF2]/40 space-y-3">
+                        {rendu && !reRecording ? (
+                          /* L'élève a déjà envoyé sa note vocale */
+                          <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#86EFAC] space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-xs font-black text-[#1E7E44] flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-[#1E7E44]" />
+                                Récitation envoyée le {formatDate(rendu.created_at)}
+                              </span>
+
+                              {/* Statut de la correction */}
+                              {rendu.statut === 'valide' && (
+                                <span className="text-xs font-extrabold px-3 py-0.5 rounded-full bg-[#1E7E44] text-white flex items-center gap-1 shadow-xs">
+                                  <span>🌟 Validé par l'enseignante !</span>
+                                </span>
+                              )}
+                              {rendu.statut === 'a_reviser' && (
+                                <span className="text-xs font-extrabold px-3 py-0.5 rounded-full bg-[#854D0E] text-white flex items-center gap-1 shadow-xs">
+                                  <span>🔄 À réviser et réenregistrer</span>
+                                </span>
+                              )}
+                              {rendu.statut === 'en_attente' && (
+                                <span className="text-xs font-extrabold px-3 py-0.5 rounded-full bg-[#FEF08A] text-[#854D0E] border border-[#FDE047]">
+                                  <span>⏳ En attente d'écoute par l'enseignante</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Lecteur de son propre enregistrement */}
+                            <AudioPlayer
+                              src={rendu.audio_url}
+                              label="Votre note vocale enregistrée"
+                              className="bg-white border-[#86EFAC]"
+                            />
+
+                            {/* Commentaire de la prof */}
+                            {rendu.commentaire_prof && (
+                              <div className="p-3 rounded-xl bg-white border border-[#86EFAC] space-y-1">
+                                <p className="text-xs font-black text-[#1E7E44] flex items-center gap-1.5">
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                  <span>Retour de l'enseignante :</span>
+                                </p>
+                                <p className="text-xs text-gray-700 italic">
+                                  « {rendu.commentaire_prof} »
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Bouton pour réenregistrer */}
+                            <div className="flex justify-end pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setIsReRecording((prev) => ({ ...prev, [d.id]: true }))}
+                                className="text-xs font-bold text-[#1B2A7A] hover:underline flex items-center gap-1"
+                              >
+                                <Mic className="w-3.5 h-3.5" />
+                                <span>Envoyer une nouvelle prise vocale</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Zone d'enregistrement micro */
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-black text-[#1B2A7A] flex items-center gap-1.5">
+                                <Mic className="w-4 h-4 text-[#1B2A7A]" />
+                                <span>Votre enregistrement vocal :</span>
+                              </p>
+                              {reRecording && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsReRecording((prev) => ({ ...prev, [d.id]: false }))}
+                                  className="text-xs text-gray-400 hover:text-gray-700"
+                                >
+                                  Annuler et garder l'ancien
+                                </button>
+                              )}
+                            </div>
+
+                            <AudioRecorder
+                              label="Appuyez pour réciter au micro"
+                              onAudioReady={(base64, duration) => {
+                                setTempAudio((prev) => ({
+                                  ...prev,
+                                  [d.id]: { base64, duration },
+                                }));
+                              }}
+                              onReset={() => {
+                                setTempAudio((prev) => {
+                                  const n = { ...prev };
+                                  delete n[d.id];
+                                  return n;
+                                });
+                              }}
+                            />
+
+                            {/* Bouton d'envoi lorsque l'audio est prêt */}
+                            {hasRecorded && (
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitAudioRendu(d.id)}
+                                disabled={isSubmitting}
+                                className="btn-pill-sun text-xs font-black !min-h-[44px] w-full flex items-center justify-center gap-2 shadow-md animate-pulse"
+                              >
+                                <Send className="w-4 h-4" />
+                                <span>
+                                  {isSubmitting
+                                    ? 'Envoi en cours...'
+                                    : 'Envoyer ma récitation à la maîtresse'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-base text-gray-700 whitespace-pre-line leading-relaxed">
-                      {d.consigne}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Devoirs passés */}
           {devoirsPasses.length > 0 && (
-            <div className="cloud-card p-6">
-              <h3 className="text-base md:text-lg font-bold text-[#1B2A7A]/70 mb-4">
-                Devoirs passés
+            <div className="cloud-card p-6 space-y-4">
+              <h3 className="text-base md:text-lg font-bold text-[#1B2A7A]/70 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span>Devoirs des séances précédentes</span>
               </h3>
+
               <div className="space-y-3">
-                {devoirsPasses.map((d) => (
-                  <div key={d.id} className="p-3.5 rounded-xl bg-white/70 border border-gray-200 opacity-80">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-sm text-[#1B2A7A]">{d.titre}</span>
-                      <span className="text-xs text-gray-500">{d.date_limite && formatDate(d.date_limite)}</span>
+                {devoirsPasses.map((d) => {
+                  const rendu = rendus[d.id];
+
+                  return (
+                    <div key={d.id} className="p-4 rounded-2xl bg-white/70 border border-gray-200 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-sm text-[#1B2A7A]">{d.titre}</span>
+                        <span className="text-xs text-gray-400">
+                          {d.date_limite && formatDate(d.date_limite)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 line-clamp-2">{d.consigne}</p>
+
+                      {rendu && (
+                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                          <span className="text-[11px] text-[#1E7E44] font-bold">
+                            ✓ Récitation transmise
+                          </span>
+                          <AudioPlayer
+                            src={rendu.audio_url}
+                            label="Réécouter"
+                            className="!p-1.5 !text-xs"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{d.consigne}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

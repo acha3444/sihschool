@@ -105,14 +105,30 @@ create table public.progressions (
   created_at timestamptz not null default now()
 );
 
--- DEVOIRS : groupe_id, titre, consigne, date_limite
+-- DEVOIRS : groupe_id, titre, consigne, audio_consigne, date_limite
 create table public.devoirs (
   id uuid primary key default gen_random_uuid(),
   groupe_id uuid not null references public.groupes(id) on delete cascade,
   titre text not null,
   consigne text not null,
+  audio_consigne text,
   date_limite date,
   created_at timestamptz not null default now()
+);
+
+-- DEVOIR_RENDUS : enregistrements vocaux rendus par les élèves avec correction enseignante
+create table public.devoir_rendus (
+  id uuid primary key default gen_random_uuid(),
+  devoir_id uuid not null references public.devoirs(id) on delete cascade,
+  eleve_id uuid not null references public.eleves(id) on delete cascade,
+  audio_url text not null,
+  duree_secondes integer default 0,
+  commentaire_eleve text,
+  statut text not null check (statut in ('en_attente', 'valide', 'a_reviser')) default 'en_attente',
+  commentaire_prof text,
+  corrige_le timestamptz,
+  created_at timestamptz not null default now(),
+  constraint devoir_rendus_unique unique (devoir_id, eleve_id)
 );
 
 -- APPRECIATIONS : eleve_id, periode (ex: "2026-10"), texte
@@ -478,6 +494,35 @@ create policy "Eleve adulte lit les devoirs de son groupe"
       where e.groupe_id = devoirs.groupe_id and e.compte_id = auth.uid()
     )
   );
+
+-- ------------------------------------------------------------------------------
+-- POLICIES : DEVOIR_RENDUS (Notes vocales élèves & corrections enseignante)
+-- ------------------------------------------------------------------------------
+alter table public.devoir_rendus enable row level security;
+
+create policy "Admin total sur devoir_rendus"
+  on public.devoir_rendus
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Prof gere les rendus de ses eleves"
+  on public.devoir_rendus
+  for all
+  using (public.is_prof_of_eleve(eleve_id))
+  with check (public.is_prof_of_eleve(eleve_id));
+
+create policy "Parent gere les rendus de ses enfants"
+  on public.devoir_rendus
+  for all
+  using (public.is_parent_of(eleve_id))
+  with check (public.is_parent_of(eleve_id));
+
+create policy "Eleve adulte gere ses rendus"
+  on public.devoir_rendus
+  for all
+  using (public.is_eleve_self(eleve_id))
+  with check (public.is_eleve_self(eleve_id));
 
 -- ------------------------------------------------------------------------------
 -- POLICIES : APPRECIATIONS

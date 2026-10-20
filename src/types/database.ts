@@ -75,14 +75,32 @@ export interface Progression {
   created_at: string;
 }
 
+export type DevoirRenduStatut = 'en_attente' | 'valide' | 'a_reviser';
+
 export interface Devoir {
   id: string;
   groupe_id: string;
   titre: string;
   consigne: string;
+  audio_consigne?: string | null;
   date_limite?: string | null;
   created_at: string;
   groupe?: Groupe | null;
+}
+
+export interface DevoirRendu {
+  id: string;
+  devoir_id: string;
+  eleve_id: string;
+  audio_url: string;
+  duree_secondes: number;
+  commentaire_eleve?: string | null;
+  statut: DevoirRenduStatut;
+  commentaire_prof?: string | null;
+  corrige_le?: string | null;
+  created_at: string;
+  eleve?: Eleve | null;
+  devoir?: Devoir | null;
 }
 
 export interface Appreciation {

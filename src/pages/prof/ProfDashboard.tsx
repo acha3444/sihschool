@@ -8,10 +8,13 @@ import {
   Presence,
   Progression,
   Devoir,
+  DevoirRendu,
   Appreciation,
   Annonce,
   PresenceStatut,
 } from '../../types/database';
+import { AudioPlayer } from '../../components/common/AudioPlayer';
+import { AudioRecorder } from '../../components/common/AudioRecorder';
 import {
   Calendar,
   Users,
@@ -51,13 +54,20 @@ export const ProfDashboard: React.FC = () => {
   const [devoirs, setDevoirs] = useState<Devoir[]>([]);
   const [appreciations, setAppreciations] = useState<Appreciation[]>([]);
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
+  const [rendus, setRendus] = useState<DevoirRendu[]>([]);
 
   // Filtres
   const todayDate = new Date().toISOString().split('T')[0];
   const [selectedSeanceForAppel, setSelectedSeanceForAppel] = useState<string | null>(null);
+  const [selectedDevoirForRendus, setSelectedDevoirForRendus] = useState<string | null>(null);
   const [filterGroupeId, setFilterGroupeId] = useState<string>('all');
   const [searchEleve, setSearchEleve] = useState('');
   const [selectedEleveDetail, setSelectedEleveDetail] = useState<Eleve | null>(null);
+
+  // Correction devoirs
+  const [correctionStatut, setCorrectionStatut] = useState<Record<string, 'valide' | 'a_reviser'>>({});
+  const [correctionCommentaire, setCorrectionCommentaire] = useState<Record<string, string>>({});
+  const [savingCorrectionId, setSavingCorrectionId] = useState<string | null>(null);
 
   // Progression modifiable
   const [editProgLecon, setEditProgLecon] = useState<number>(1);
@@ -81,6 +91,7 @@ export const ProfDashboard: React.FC = () => {
   const [devoirGroupeId, setDevoirGroupeId] = useState('');
   const [devoirTitre, setDevoirTitre] = useState('');
   const [devoirConsigne, setDevoirConsigne] = useState('');
+  const [devoirAudioConsigne, setDevoirAudioConsigne] = useState('');
   const [devoirDateLimite, setDevoirDateLimite] = useState('');
 
   // Modal Annonce pour Groupe
@@ -160,12 +171,23 @@ export const ProfDashboard: React.FC = () => {
           .in('groupe_id', groupeIds)
           .order('created_at', { ascending: false });
         setDevoirs((devoirsData as Devoir[]) || []);
+
+        // 8. Récitations et devoirs rendus par les élèves
+        if (eleveIds.length > 0) {
+          const { data: rendusData } = await supabase
+            .from('devoir_rendus')
+            .select('*, eleve:eleves(*), devoir:devoirs(*)')
+            .in('eleve_id', eleveIds)
+            .order('created_at', { ascending: false });
+          setRendus((rendusData as DevoirRendu[]) || []);
+        }
       } else {
         setMesEleves([]);
         setSeances([]);
         setPresences([]);
         setProgressions([]);
         setDevoirs([]);
+        setRendus([]);
         setAppreciations([]);
       }
 
@@ -347,6 +369,7 @@ export const ProfDashboard: React.FC = () => {
           groupe_id: devoirGroupeId,
           titre: devoirTitre.trim(),
           consigne: devoirConsigne.trim(),
+          audio_consigne: devoirAudioConsigne || null,
           date_limite: devoirDateLimite || null,
         })
         .select('*, groupe:groupes(*)')
@@ -357,10 +380,40 @@ export const ProfDashboard: React.FC = () => {
         setIsAddDevoirModalOpen(false);
         setDevoirTitre('');
         setDevoirConsigne('');
+        setDevoirAudioConsigne('');
         setDevoirDateLimite('');
       }
     } catch (err: any) {
       alert('Erreur ajout devoir : ' + err.message);
+    }
+  };
+
+  // Corriger un devoir rendu par un élève
+  const handleSaveCorrection = async (renduId: string) => {
+    const statut = correctionStatut[renduId] || 'valide';
+    const commentaire = correctionCommentaire[renduId] || '';
+    setSavingCorrectionId(renduId);
+    try {
+      const { data, error } = await supabase
+        .from('devoir_rendus')
+        .update({
+          statut,
+          commentaire_prof: commentaire.trim() || null,
+          corrige_le: new Date().toISOString(),
+        })
+        .eq('id', renduId)
+        .select('*, eleve:eleves(*), devoir:devoirs(*)')
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setRendus((prev) => prev.map((r) => (r.id === renduId ? (data as DevoirRendu) : r)));
+        alert('Correction et retour bien enregistrés pour cet élève !');
+      }
+    } catch (err: any) {
+      alert('Erreur enregistrement correction : ' + err.message);
+    } finally {
+      setSavingCorrectionId(null);
     }
   };
 
@@ -959,17 +1012,20 @@ export const ProfDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredDevoirs.map((devoir) => {
               const grp = mesGroupes.find((g) => g.id === devoir.groupe_id);
               const isPast = devoir.date_limite ? devoir.date_limite < todayDate : false;
+              const rendusDuDevoir = rendus.filter((r) => r.devoir_id === devoir.id);
+              const elevesDuGroupe = mesEleves.filter((e) => e.groupe_id === devoir.groupe_id);
+              const isRendusOpen = selectedDevoirForRendus === devoir.id;
 
               return (
                 <div
                   key={devoir.id}
-                  className="cloud-card p-5 border-2 border-white shadow-soft-blue flex flex-col justify-between space-y-3"
+                  className="cloud-card p-5 border-2 border-white shadow-soft-blue flex flex-col justify-between space-y-4"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[10px] font-black uppercase text-[#1B2A7A] bg-[#FFF6E3] px-2.5 py-0.5 rounded-full border border-[#FFE15C]">
                         {grp?.nom || 'Groupe'}
@@ -995,6 +1051,171 @@ export const ProfDashboard: React.FC = () => {
                     <div className="p-3 rounded-xl bg-white border border-[#CDBDF2]/40 text-xs text-[#4A5487] font-medium whitespace-pre-line leading-relaxed">
                       {devoir.consigne}
                     </div>
+
+                    {/* Modèle de consigne vocale de la prof si présente */}
+                    {devoir.audio_consigne && (
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-[#1B2A7A]">
+                          Votre consigne vocale :
+                        </span>
+                        <AudioPlayer
+                          src={devoir.audio_consigne}
+                          label="Modèle audio"
+                          className="!p-2 bg-[#FFF6E3] border-[#FFE15C]"
+                        />
+                      </div>
+                    )}
+
+                    {/* Bouton pour afficher les récitations reçues */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDevoirForRendus(isRendusOpen ? null : devoir.id)}
+                      className={`w-full py-2.5 px-4 rounded-2xl text-xs font-black transition-all flex items-center justify-between shadow-xs ${
+                        isRendusOpen
+                          ? 'bg-[#1B2A7A] text-white'
+                          : 'bg-[#FFF6E3] hover:bg-[#FFEEC2] text-[#1B2A7A] border border-[#FFE15C]'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <BookCheck className="w-4 h-4" />
+                        <span>Récitations des élèves</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-white text-[#1B2A7A] text-[10px] font-extrabold">
+                        {rendusDuDevoir.length} / {elevesDuGroupe.length} reçue(s)
+                      </span>
+                    </button>
+
+                    {/* Panneau dépliable des récitations d'élèves */}
+                    {isRendusOpen && (
+                      <div className="pt-2 border-t border-[#CDBDF2]/40 space-y-3">
+                        <h4 className="text-xs font-black text-[#1B2A7A] uppercase tracking-wide">
+                          Écoute & Correction des élèves ({elevesDuGroupe.length}) :
+                        </h4>
+
+                        <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                          {elevesDuGroupe.map((el) => {
+                            const rendu = rendusDuDevoir.find((r) => r.eleve_id === el.id);
+
+                            return (
+                              <div
+                                key={el.id}
+                                className="p-3 rounded-2xl bg-white border border-[#CDBDF2]/60 space-y-2 shadow-xs"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-black text-xs text-[#1B2A7A]">
+                                    {el.prenom} {el.nom}
+                                  </span>
+
+                                  {rendu ? (
+                                    <span
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                        rendu.statut === 'valide'
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : rendu.statut === 'a_reviser'
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : 'bg-yellow-100 text-yellow-800'
+                                      }`}
+                                    >
+                                      {rendu.statut === 'valide'
+                                        ? 'Validé 🌟'
+                                        : rendu.statut === 'a_reviser'
+                                        ? 'À réviser 🔄'
+                                        : 'En attente ⏳'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-gray-400 italic">
+                                      Non rendu
+                                    </span>
+                                  )}
+                                </div>
+
+                                {rendu ? (
+                                  <div className="space-y-2 pt-1">
+                                    {/* Lecteur audio de la note de l'élève */}
+                                    <AudioPlayer
+                                      src={rendu.audio_url}
+                                      label={`Récitation de ${el.prenom}`}
+                                      className="!p-2 bg-[#F9FAFB]"
+                                    />
+
+                                    {/* Formulaire de correction / retour enseignant */}
+                                    <div className="space-y-1.5 pt-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setCorrectionStatut((prev) => ({
+                                              ...prev,
+                                              [rendu.id]: 'valide',
+                                            }))
+                                          }
+                                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                            (correctionStatut[rendu.id] || rendu.statut) === 'valide'
+                                              ? 'bg-[#1E7E44] text-white shadow-xs'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                          }`}
+                                        >
+                                          Valider 🌟
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setCorrectionStatut((prev) => ({
+                                              ...prev,
+                                              [rendu.id]: 'a_reviser',
+                                            }))
+                                          }
+                                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                            (correctionStatut[rendu.id] || rendu.statut) === 'a_reviser'
+                                              ? 'bg-[#854D0E] text-white shadow-xs'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                          }`}
+                                        >
+                                          À réviser 🔄
+                                        </button>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type="text"
+                                          value={
+                                            correctionCommentaire[rendu.id] !== undefined
+                                              ? correctionCommentaire[rendu.id]
+                                              : rendu.commentaire_prof || ''
+                                          }
+                                          onChange={(e) =>
+                                            setCorrectionCommentaire((prev) => ({
+                                              ...prev,
+                                              [rendu.id]: e.target.value,
+                                            }))
+                                          }
+                                          placeholder="Remarque pour l'élève (prononciation, encouragements)..."
+                                          className="flex-1 min-h-[34px] px-2.5 py-1 rounded-lg border border-[#CDBDF2] text-xs text-[#1B2A7A]"
+                                        />
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSaveCorrection(rendu.id)}
+                                          disabled={savingCorrectionId === rendu.id}
+                                          className="btn-pill-sun text-[10px] font-bold !min-h-[34px] px-3 flex-shrink-0"
+                                        >
+                                          {savingCorrectionId === rendu.id ? '...' : 'Enregistrer'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-gray-400 italic">
+                                    L'élève n'a pas encore enregistré sa récitation.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-[#CDBDF2]/40 flex items-center justify-between text-[11px] text-gray-400">
@@ -1567,6 +1788,17 @@ export const ProfDashboard: React.FC = () => {
                   value={devoirDateLimite}
                   onChange={(e) => setDevoirDateLimite(e.target.value)}
                   className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
+                />
+              </div>
+
+              <div className="space-y-1 pt-1">
+                <label className="block text-xs font-bold text-[#1B2A7A]">
+                  Consigne vocale ou modèle de prononciation (optionnel) :
+                </label>
+                <AudioRecorder
+                  label="Enregistrer un modèle vocal pour les élèves"
+                  onAudioReady={(base64) => setDevoirAudioConsigne(base64)}
+                  onReset={() => setDevoirAudioConsigne('')}
                 />
               </div>
 
