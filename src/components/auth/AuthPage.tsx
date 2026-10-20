@@ -185,6 +185,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
               </div>
             </div>
 
+            {/* In-page PWA Install Callout Card */}
+            <div className="max-w-2xl mx-auto cloud-card p-4 sm:p-4.5 border-2 border-white shadow-soft-blue flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#A9D8F5] border-2 border-white flex items-center justify-center text-[#1B2A7A] shrink-0 shadow-sm p-1">
+                  <img src="/icon-192.png" alt="Sihscool App" className="w-full h-full object-contain rounded-xl" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-[#1B2A7A] leading-tight">
+                    Installez Sihscool sur votre téléphone !
+                  </h3>
+                  <p className="text-xs text-[#4A5487] font-semibold">
+                    Accès direct en plein écran sans barre d’adresse pour vous et vos enfants
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('sihscool-open-install'))}
+                className="btn-pill-sun !min-h-[40px] !text-xs !py-2 !px-4 shadow-sm shrink-0 flex items-center gap-2"
+              >
+                <Smartphone className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+                <span>Installer l'application</span>
+              </button>
+            </div>
+
             {/* 3 Large Cloud-shaped Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
               {/* Card 1: Élève */}
