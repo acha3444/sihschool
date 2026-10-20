@@ -15,6 +15,7 @@ import {
   Users,
   ShieldCheck,
   Smartphone,
+  GraduationCap,
   LucideIcon,
 } from 'lucide-react';
 import { AvatarDisplay } from './AvatarDisplay';
@@ -68,15 +69,26 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange,
       { id: 'messages', label: 'Messages', icon: MessageCircle, badge: unreadMessagesCount },
       { id: 'annonces', label: 'Annonces', icon: Megaphone },
     ];
+  } else if (currentUser.role === 'admin') {
+    tabs = [
+      { id: 'dashboard', label: 'Tableau', icon: Home },
+      { id: 'profs', label: 'Enseignants', icon: GraduationCap },
+      { id: 'groupes', label: 'Élèves & Groupes', icon: Users },
+      { id: 'appel', label: 'Appel', icon: UserCheck },
+      { id: 'progression', label: 'Nourania', icon: TrendingUp },
+      { id: 'devoirs', label: 'Devoirs', icon: CheckSquare },
+      { id: 'messages', label: 'Messages', icon: MessageCircle, badge: unreadMessagesCount },
+      { id: 'admin', label: 'Direction', icon: ShieldCheck },
+    ];
   } else {
     tabs = [
       { id: 'dashboard', label: 'Tableau', icon: Home },
       { id: 'appel', label: 'Appel', icon: UserCheck },
       { id: 'progression', label: 'Nourania', icon: TrendingUp },
       { id: 'devoirs', label: 'Devoirs', icon: CheckSquare },
-      { id: 'groupes', label: 'Élèves', icon: Users },
+      { id: 'groupes', label: 'Mes Élèves', icon: Users },
       { id: 'messages', label: 'Messages', icon: MessageCircle, badge: unreadMessagesCount },
-      { id: 'admin', label: currentUser.role === 'admin' ? 'Direction' : 'Cotisations', icon: ShieldCheck },
+      { id: 'admin', label: 'Cotisations', icon: ShieldCheck },
     ];
   }
 
@@ -174,8 +186,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange,
       </aside>
 
       {/* ─── MOBILE BOTTOM BAR (Fond crème #FFF6E3, actif en pilule lavande #CDBDF2) ─── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFF6E3]/95 backdrop-blur-xl border-t border-[#CDBDF2]/60 px-2 py-2 safe-area-pb shadow-[0_-4px_25px_rgba(27,42,122,0.06)]">
-        <div className="flex items-center justify-around">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFF6E3]/95 backdrop-blur-xl border-t border-[#CDBDF2]/60 px-2 py-2 safe-area-pb shadow-[0_-4px_25px_rgba(27,42,122,0.06)] overflow-x-auto no-scrollbar">
+        <div className="flex items-center justify-start sm:justify-around gap-1 min-w-max px-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
@@ -183,14 +195,14 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, onTabChange,
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`relative flex flex-col items-center justify-center min-w-[54px] min-h-[48px] py-1 px-2 transition-all duration-150 active:scale-95 ${
+                className={`relative flex flex-col items-center justify-center min-w-[54px] min-h-[48px] py-1 px-2.5 transition-all duration-150 active:scale-95 ${
                   isActive
                     ? 'bg-[#CDBDF2] text-[#1B2A7A] rounded-full shadow-sm font-black'
                     : 'text-[#4A5487]'
                 }`}
               >
                 <Icon className="w-5 h-5 text-[#1B2A7A]" strokeWidth={2.5} />
-                <span className="text-[10px] font-baloo font-bold leading-tight mt-0.5 truncate max-w-[62px]">
+                <span className="text-[10px] font-baloo font-bold leading-tight mt-0.5 truncate max-w-[66px]">
                   {tab.label}
                 </span>
 

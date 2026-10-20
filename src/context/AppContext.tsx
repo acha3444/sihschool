@@ -117,6 +117,16 @@ interface AppContextType {
     parentEmail?: string;
     telephoneParent?: string;
   }) => User & { parent?: User; motDePasseTemporaire?: string | null };
+  createProf: (data: {
+    prenom: string;
+    nom: string;
+    email: string;
+    telephone?: string;
+    avatar?: string;
+    groupeIds?: string[];
+  }) => User & { motDePasseTemporaire: string };
+  resetUserTempPassword: (userId: string) => string;
+  deleteUser: (userId: string) => void;
   registerParentAndStudent: (data: {
     parentPrenom: string;
     parentNom: string;
@@ -277,11 +287,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // If password is set on the user and provided in form, check it
-    if (user.mot_de_passe && password) {
-      if (user.mot_de_passe.trim() !== password.trim()) {
+    if (user.mot_de_passe) {
+      if (!password || user.mot_de_passe.trim() !== password.trim()) {
         return {
           success: false,
-          error: 'Mot de passe incorrect. Veuillez vérifier le mot de passe temporaire transmis par l’école.',
+          error: user.doit_changer_mot_de_passe
+            ? 'Mot de passe temporaire incorrect. Veuillez vérifier le code transmis par la direction.'
+            : 'Mot de passe incorrect. Veuillez vérifier vos identifiants ou le mot de passe temporaire transmis par l’école.',
         };
       }
     }
@@ -932,7 +944,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newId = `groupe-${Date.now()}`;
     const newG: Groupe = { ...data, id: newId };
     setGroupes((prev) => [...prev, newG]);
+    syncTableRecord('groupes', newG, 'insert');
     return newG;
+  };
+
+  const createProf = (data: {
+    prenom: string;
+    nom: string;
+    email: string;
+    telephone?: string;
+    avatar?: string;
+    groupeIds?: string[];
+  }): User & { motDePasseTemporaire: string } => {
+    const cleanEmail = data.email.toLowerCase().trim();
+    const existing = users.find(
+      (u) => u.email?.toLowerCase().trim() === cleanEmail
+    );
+    if (existing) {
+      throw new Error('Un utilisateur avec cette adresse e-mail existe déjà.');
+    }
+
+    const tempPassword = `SIH-PROF-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newProfId = `user-prof-${Date.now()}`;
+    const newProf: User = {
+      id: newProfId,
+      role: 'prof',
+      prenom: data.prenom.trim(),
+      nom: data.nom.trim(),
+      email: cleanEmail,
+      telephone: data.telephone?.trim() || undefined,
+      avatar: data.avatar || 'prof-fatima',
+      mot_de_passe: tempPassword,
+      doit_changer_mot_de_passe: true,
+      cree_le: new Date().toISOString().split('T')[0],
+    };
+
+    setUsers((prev) => [...prev, newProf]);
+    syncTableRecord('users', newProf, 'insert');
+
+    // Assign to selected groups if any
+    if (data.groupeIds && data.groupeIds.length > 0) {
+      setGroupes((prev) =>
+        prev.map((g) => (data.groupeIds!.includes(g.id) ? { ...g, prof_id: newProfId } : g))
+      );
+      data.groupeIds.forEach((gid) => {
+        syncTableRecord('groupes', { id: gid, prof_id: newProfId }, 'upsert');
+      });
+    }
+
+    return Object.assign(newProf, {
+      motDePasseTemporaire: tempPassword,
+    });
+  };
+
+  const resetUserTempPassword = (userId: string): string => {
+    const targetUser = users.find((u) => u.id === userId);
+    const isProf = targetUser?.role === 'prof';
+    const tempPassword = isProf
+      ? `SIH-PROF-${Math.floor(1000 + Math.random() * 9000)}`
+      : `SIH-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, mot_de_passe: tempPassword, doit_changer_mot_de_passe: true }
+          : u
+      )
+    );
+    syncTableRecord('users', {
+      id: userId,
+      mot_de_passe: tempPassword,
+      doit_changer_mot_de_passe: true,
+    });
+    return tempPassword;
+  };
+
+  const deleteUser = (userId: string) => {
+    // If teacher, reassign their groups to admin
+    const adminUser = users.find((u) => u.role === 'admin');
+    if (adminUser) {
+      setGroupes((prev) =>
+        prev.map((g) => (g.prof_id === userId ? { ...g, prof_id: adminUser.id } : g))
+      );
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+    syncTableRecord('users', { id: userId }, 'delete');
   };
 
   const markNotificationRead = (id: string) => {
@@ -1042,6 +1138,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sendMessage,
         createAnnonce,
         createEleve,
+        createProf,
+        resetUserTempPassword,
+        deleteUser,
         registerParentAndStudent,
         createGroupe,
         markNotificationRead,

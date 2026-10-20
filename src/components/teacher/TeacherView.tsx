@@ -31,6 +31,12 @@ import {
   Cloud,
   Copy,
   CheckCheck,
+  GraduationCap,
+  Trash2,
+  RefreshCw,
+  Mail,
+  Phone,
+  UserPlus,
 } from 'lucide-react';
 
 interface TeacherViewProps {
@@ -60,6 +66,9 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
     sendMessage,
     createAnnonce,
     createEleve,
+    createProf,
+    resetUserTempPassword,
+    deleteUser,
     createGroupe,
     getGroupsOfTeacher,
     getStudentsOfTeacher,
@@ -99,6 +108,22 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
     (User & { parent?: User; motDePasseTemporaire?: string | null }) | null
   >(null);
   const [copiedParentMsg, setCopiedParentMsg] = useState(false);
+
+  // Teacher Management State (Admin only)
+  const [newProfPrenom, setNewProfPrenom] = useState('');
+  const [newProfNom, setNewProfNom] = useState('');
+  const [newProfEmail, setNewProfEmail] = useState('');
+  const [newProfPhone, setNewProfPhone] = useState('');
+  const [newProfAvatar, setNewProfAvatar] = useState('prof-fatima');
+  const [newProfGroupIds, setNewProfGroupIds] = useState<string[]>([]);
+  const [profError, setProfError] = useState('');
+  const [createdProfResult, setCreatedProfResult] = useState<(User & { motDePasseTemporaire: string }) | null>(null);
+  const [copiedProfMsg, setCopiedProfMsg] = useState(false);
+  const [resetSuccessData, setResetSuccessData] = useState<{ prof: User; tempPass: string } | null>(null);
+  const [copiedResetMsg, setCopiedResetMsg] = useState(false);
+
+  // Group creation teacher assign
+  const [newGroupProfId, setNewGroupProfId] = useState('');
 
   const [newGroupNom, setNewGroupNom] = useState('');
   const [newGroupType, setNewGroupType] = useState<'nourania' | 'litteraire' | 'mixte'>('nourania');
@@ -198,6 +223,56 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
     setTimeout(() => setCopiedParentMsg(false), 3000);
   };
 
+  const handleCreateProfSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfError('');
+    if (!newProfPrenom || !newProfNom || !newProfEmail) {
+      setProfError('Veuillez renseigner le prénom, le nom et l’adresse e-mail.');
+      return;
+    }
+    try {
+      const created = createProf({
+        prenom: newProfPrenom,
+        nom: newProfNom,
+        email: newProfEmail,
+        telephone: newProfPhone,
+        avatar: newProfAvatar,
+        groupeIds: newProfGroupIds,
+      });
+      setCreatedProfResult(created);
+      setNewProfPrenom('');
+      setNewProfNom('');
+      setNewProfEmail('');
+      setNewProfPhone('');
+      setNewProfGroupIds([]);
+    } catch (err: any) {
+      setProfError(err.message || 'Erreur lors de la création du professeur.');
+    }
+  };
+
+  const handleCopyProfInvitation = (prof: User, tempPass?: string) => {
+    const passwordToUse = tempPass || prof.mot_de_passe || 'Transmis par la direction';
+    const origin = window.location.origin;
+    const msg = `Assalamu alaykum ${prof.prenom} ! Votre compte enseignant pour l'école Sihscool a été configuré par la direction.\n\n👩‍🏫 Espace Enseignant : ${origin}\nIdentifiant e-mail : ${prof.email}\nMot de passe temporaire : ${passwordToUse}\n(Il vous sera demandé de définir votre propre mot de passe personnel dès votre première connexion)\n\nBarakAllahu fikoum !`;
+    navigator.clipboard.writeText(msg);
+    setCopiedProfMsg(true);
+    setTimeout(() => setCopiedProfMsg(false), 3000);
+  };
+
+  const handleResetTeacherPassword = (prof: User) => {
+    const newPass = resetUserTempPassword(prof.id);
+    setResetSuccessData({ prof, tempPass: newPass });
+  };
+
+  const handleCopyResetInvitation = () => {
+    if (!resetSuccessData) return;
+    const origin = window.location.origin;
+    const msg = `Assalamu alaykum ${resetSuccessData.prof.prenom} ! Votre mot de passe temporaire pour l'école Sihscool a été réinitialisé par la direction.\n\n👩‍🏫 Espace Enseignant : ${origin}\nIdentifiant e-mail : ${resetSuccessData.prof.email}\nNouveau mot de passe temporaire : ${resetSuccessData.tempPass}\n(Vous devrez définir un nouveau mot de passe lors de cette connexion)\n\nBarakAllahu fikoum !`;
+    navigator.clipboard.writeText(msg);
+    setCopiedResetMsg(true);
+    setTimeout(() => setCopiedResetMsg(false), 3000);
+  };
+
   const handleCreateGroupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupNom || !newGroupCreneau) return;
@@ -208,11 +283,12 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
       creneau: newGroupCreneau,
       lieu_ou_lien: newGroupLieu || 'Salle Al-Qalam',
       tarif_mensuel: newGroupTarif,
-      prof_id: currentUser.id,
+      prof_id: newGroupProfId || currentUser.id,
       code_couleur: 'mint',
     });
     setNewGroupNom('');
     setNewGroupCreneau('');
+    setNewGroupProfId('');
     setGroupSuccess(true);
     setTimeout(() => setGroupSuccess(false), 3000);
   };
@@ -831,6 +907,452 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          4.5 TAB : ENSEIGNANTS & GESTION PÉDAGOGIQUE (ADMIN SEULEMENT)
+      ───────────────────────────────────────────────────────────── */}
+      {currentTab === 'profs' && (
+        <div className="space-y-6">
+          {!isSuperAdmin ? (
+            <div className="cloud-card p-8 border-4 border-white text-center space-y-3">
+              <AlertTriangle className="w-12 h-12 text-[#E5483D] mx-auto" strokeWidth={2.5} />
+              <h3 className="font-baloo font-extrabold text-2xl text-[#1B2A7A]">
+                Accès réservé à la Direction
+              </h3>
+              <p className="text-xs text-[#4A5487] font-baloo max-w-md mx-auto">
+                Seule la Direction de l'école Sihscool peut administrer l'équipe pédagogique et créer des comptes professeurs.
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('dashboard')}
+                className="btn-pill-sun text-xs py-2 px-5 inline-flex items-center gap-2 mt-2"
+              >
+                <span>Retour au tableau de bord</span>
+                <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Top Banner */}
+              <div className="cloud-card p-6 sm:p-7 border-4 border-white space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="badge-lavender text-xs">Équipe Pédagogique · Direction</span>
+                    <h2 className="font-baloo font-extrabold text-2xl sm:text-3xl text-[#1B2A7A] mt-1">
+                      Gestion des Enseignants & Accès
+                    </h2>
+                    <p className="text-xs text-[#4A5487] font-baloo mt-0.5">
+                      Les professeurs ne peuvent pas s'inscrire seuls. C’est l’administration qui génère leur compte avec un mot de passe temporaire à usage unique.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="badge-lavender text-xs font-bold px-3 py-1.5 shadow-sm">
+                      {users.filter((u) => u.role === 'prof').length} Enseignant(s)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Key statistics row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-3.5 rounded-2xl bg-[#FFFFFF] border border-[#CDBDF2] space-y-0.5">
+                    <span className="text-[10px] text-[#4A5487] font-bold uppercase tracking-wider block font-baloo">
+                      Professeurs Actifs
+                    </span>
+                    <span className="font-baloo font-black text-2xl text-[#1B2A7A]">
+                      {users.filter((u) => u.role === 'prof' && !u.doit_changer_mot_de_passe).length}
+                    </span>
+                    <p className="text-[10px] text-[#2B7A00] font-bold">Mot de passe personnel défini ✓</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] space-y-0.5">
+                    <span className="text-[10px] text-[#8C6D00] font-bold uppercase tracking-wider block font-baloo">
+                      1ère Connexion en attente
+                    </span>
+                    <span className="font-baloo font-black text-2xl text-[#E5483D]">
+                      {users.filter((u) => u.role === 'prof' && u.doit_changer_mot_de_passe).length}
+                    </span>
+                    <p className="text-[10px] text-[#8C6D00] font-bold">Mot de passe temporaire actif</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#FFFFFF] border border-[#CDBDF2] space-y-0.5">
+                    <span className="text-[10px] text-[#4A5487] font-bold uppercase tracking-wider block font-baloo">
+                      Groupes & Classes
+                    </span>
+                    <span className="font-baloo font-black text-2xl text-[#1B2A7A]">
+                      {groupes.length}
+                    </span>
+                    <p className="text-[10px] text-[#4A5487] font-bold">Classes actives</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Reset Alert Banner (if recently triggered) */}
+              {resetSuccessData && (
+                <div className="p-5 rounded-3xl bg-[#FFF6E3] border-2 border-[#FFE15C] shadow-cloud-pop animate-fadeIn space-y-3 font-baloo">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[#1B2A7A] font-extrabold text-sm">
+                      <RefreshCw className="w-5 h-5 text-[#8C6D00] animate-spin" style={{ animationIterationCount: 1 }} />
+                      <span>Mot de passe temporaire réinitialisé pour {resetSuccessData.prof.prenom} {resetSuccessData.prof.nom}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResetSuccessData(null)}
+                      className="text-xs text-[#4A5487] hover:text-[#1B2A7A] font-bold"
+                    >
+                      Fermer ✕
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white rounded-2xl border border-[#FFE15C]">
+                    <div>
+                      <span className="text-[10px] text-[#4A5487] uppercase font-extrabold block">
+                        Nouveau code temporaire (usage unique) :
+                      </span>
+                      <span className="font-mono text-2xl font-black text-[#E5483D] tracking-wider">
+                        {resetSuccessData.tempPass}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCopyResetInvitation}
+                      className="btn-pill-sun !min-h-[40px] !text-xs !py-1 !px-4 shrink-0 flex items-center gap-2"
+                    >
+                      {copiedResetMsg ? (
+                        <>
+                          <CheckCheck className="w-4 h-4 text-[#2B7A00]" strokeWidth={2.5} />
+                          <span className="text-[#2B7A00]">Message copié !</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" strokeWidth={2.5} />
+                          <span>Copier le message pour WhatsApp / SMS</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Card: Create new Teacher */}
+              <div className="cloud-card p-6 border-4 border-white space-y-4">
+                <h3 className="font-baloo font-extrabold text-xl text-[#1B2A7A] flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-[#1B2A7A]" strokeWidth={2.5} />
+                  Créer un compte Enseignant
+                </h3>
+
+                {profError && (
+                  <div className="p-3 rounded-2xl bg-[#FFF0D4] border border-[#FFE15C] text-[#E5483D] text-xs font-baloo font-bold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{profError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleCreateProfSubmit} className="space-y-4 font-baloo">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-extrabold text-[#1B2A7A]">Prénom de l'enseignant(e) *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newProfPrenom}
+                        onChange={(e) => setNewProfPrenom(e.target.value)}
+                        placeholder="Ex: Maryam, Bilal, Fatima..."
+                        className="w-full py-2.5 px-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] text-xs text-[#1B2A7A] focus:outline-none font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-extrabold text-[#1B2A7A]">Nom de famille *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newProfNom}
+                        onChange={(e) => setNewProfNom(e.target.value)}
+                        placeholder="Ex: Idrissi, Al-Mansour..."
+                        className="w-full py-2.5 px-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] text-xs text-[#1B2A7A] focus:outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-extrabold text-[#1B2A7A]">Adresse e-mail professionnelle *</label>
+                      <input
+                        type="email"
+                        required
+                        value={newProfEmail}
+                        onChange={(e) => setNewProfEmail(e.target.value)}
+                        placeholder="Ex: maryam@sihscool.fr"
+                        className="w-full py-2.5 px-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] text-xs text-[#1B2A7A] focus:outline-none font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-extrabold text-[#1B2A7A]">Numéro de téléphone (optionnel)</label>
+                      <input
+                        type="tel"
+                        value={newProfPhone}
+                        onChange={(e) => setNewProfPhone(e.target.value)}
+                        placeholder="Ex: 06 12 34 56 78"
+                        className="w-full py-2.5 px-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] text-xs text-[#1B2A7A] focus:outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Avatar Picker for Teacher */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-extrabold text-[#1B2A7A] block">
+                      Avatar de l'enseignant(e) :
+                    </label>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {[
+                        { id: 'prof-fatima', label: 'Oustadha Fatima' },
+                        { id: 'prof-bilal', label: 'Oustadh Bilal' },
+                        { id: 'cheikh-avatar', label: 'Cheikh / Direction' },
+                        { id: 'dove-mint', label: 'Livre Ouvert' },
+                        { id: 'star-mint', label: 'Étoile Or' },
+                        { id: 'falcon-mint', label: 'Boussole' },
+                      ].map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setNewProfAvatar(a.id)}
+                          className={`p-1 rounded-2xl flex items-center gap-2 px-2.5 py-1.5 transition-all text-xs font-bold ${
+                            newProfAvatar === a.id
+                              ? 'ring-3 ring-[#FFE15C] bg-white shadow-sm'
+                              : 'bg-white/60 hover:bg-white opacity-80'
+                          }`}
+                        >
+                          <AvatarDisplay avatarKey={a.id} size="sm" />
+                          <span className="text-[11px] text-[#1B2A7A]">{a.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Group Assignment */}
+                  {groupes.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <label className="text-xs font-extrabold text-[#1B2A7A] block">
+                        Attribuer des groupes de cours (optionnel) :
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {groupes.map((grp) => {
+                          const isChecked = newProfGroupIds.includes(grp.id);
+                          return (
+                            <label
+                              key={grp.id}
+                              className={`flex items-center gap-2.5 p-2.5 rounded-2xl border cursor-pointer text-xs transition-colors ${
+                                isChecked
+                                  ? 'bg-[#FFE15C]/30 border-[#FFE15C] font-extrabold text-[#1B2A7A]'
+                                  : 'bg-white border-[#CDBDF2]/60 text-[#4A5487] hover:bg-white'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNewProfGroupIds((prev) => [...prev, grp.id]);
+                                  } else {
+                                    setNewProfGroupIds((prev) => prev.filter((id) => id !== grp.id));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded text-[#1B2A7A] focus:ring-0"
+                              />
+                              <div>
+                                <p className="leading-tight">{grp.nom}</p>
+                                <span className="text-[10px] text-[#4A5487]">{grp.creneau}</span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <button type="submit" className="btn-pill-sun w-full mt-2">
+                    <span>Créer le profil Enseignant & Générer le mot de passe temporaire</span>
+                    <ArrowRight className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+                  </button>
+                </form>
+
+                {/* Result of Teacher Creation */}
+                {createdProfResult && (
+                  <div className="p-5 rounded-3xl bg-[#FFFFFF] border-3 border-[#FFE15C] space-y-4 shadow-soft-blue animate-fadeIn font-baloo mt-4">
+                    <div className="flex items-center gap-3">
+                      <AvatarDisplay avatarKey={createdProfResult.avatar} size="md" />
+                      <div>
+                        <h4 className="font-extrabold text-base text-[#1B2A7A]">
+                          Compte Enseignant créé : {createdProfResult.prenom} {createdProfResult.nom}
+                        </h4>
+                        <p className="text-xs text-[#4A5487]">
+                          Adresse : <strong>{createdProfResult.email}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] space-y-1">
+                      <span className="text-[11px] text-[#8C6D00] uppercase font-extrabold block">
+                        Mot de passe temporaire (usage unique) :
+                      </span>
+                      <span className="font-mono text-2xl font-black text-[#E5483D] tracking-wider block">
+                        {createdProfResult.motDePasseTemporaire}
+                      </span>
+                      <p className="text-[11px] text-[#4A5487] leading-relaxed pt-1">
+                        Le professeur devra obligatoirement définir son mot de passe personnel à sa première connexion.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyProfInvitation(createdProfResult, createdProfResult.motDePasseTemporaire)}
+                      className="btn-cloud-secondary w-full text-xs py-2.5 flex items-center justify-center gap-2 font-extrabold"
+                    >
+                      {copiedProfMsg ? (
+                        <>
+                          <CheckCheck className="w-4 h-4 text-[#2B7A00]" strokeWidth={2.5} />
+                          <span className="text-[#2B7A00]">Message d'invitation copié dans le presse-papier !</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" strokeWidth={2.5} />
+                          <span>Copier le message d'invitation complet pour l'enseignant (WhatsApp / Email)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* List of Teachers */}
+              <div className="space-y-3 font-baloo">
+                <div className="flex items-center justify-between pl-1">
+                  <h3 className="font-extrabold text-xl text-[#1B2A7A] flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-[#1B2A7A]" strokeWidth={2.5} />
+                    Professeurs déclarés ({users.filter((u) => u.role === 'prof').length})
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  {users
+                    .filter((u) => u.role === 'prof')
+                    .map((prof) => {
+                      const profGroups = groupes.filter((g) => g.prof_id === prof.id);
+                      const studentCount = getStudentsOfTeacher(prof.id).length;
+
+                      return (
+                        <div
+                          key={prof.id}
+                          className="cloud-card p-4 sm:p-5 border-2 border-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-soft-blue"
+                        >
+                          <div className="flex items-start sm:items-center gap-3.5">
+                            <AvatarDisplay avatarKey={prof.avatar} size="lg" />
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="font-extrabold text-base text-[#1B2A7A]">
+                                  {prof.prenom} {prof.nom}
+                                </h4>
+                                {prof.doit_changer_mot_de_passe ? (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF0D4] border border-[#FFE15C] text-[#8C6D00] flex items-center gap-1">
+                                    <KeyRound className="w-3 h-3" /> 1ère connexion en attente
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EAF7E8] border border-[#BDE8B7] text-[#2B7A00] flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> Compte actif
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-[#4A5487]">
+                                <span className="flex items-center gap-1">
+                                  <Mail className="w-3.5 h-3.5 text-[#1B2A7A]" />
+                                  {prof.email}
+                                </span>
+                                {prof.telephone && (
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="w-3.5 h-3.5 text-[#1B2A7A]" />
+                                    {prof.telephone}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Groups & Student summary */}
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="badge-lavender text-[10px] font-bold">
+                                  {studentCount} écolier(s)
+                                </span>
+                                {profGroups.length > 0 ? (
+                                  profGroups.map((g) => (
+                                    <span
+                                      key={g.id}
+                                      className="px-2 py-0.5 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] text-[10px] font-bold text-[#1B2A7A]"
+                                    >
+                                      {g.nom}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] text-[#8C6D00] italic">
+                                    Aucun groupe assigné
+                                  </span>
+                                )}
+                              </div>
+
+                              {prof.doit_changer_mot_de_passe && prof.mot_de_passe && (
+                                <p className="text-[11px] text-[#4A5487] pt-0.5">
+                                  Mot de passe temporaire : <code className="font-mono font-bold text-[#E5483D] bg-white px-2 py-0.5 rounded border border-[#CDBDF2]">{prof.mot_de_passe}</code>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Actions */}
+                          <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 self-end md:self-center">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyProfInvitation(prof)}
+                              className="btn-pill-white !min-h-[36px] !py-1 !px-3 !text-xs flex items-center gap-1.5"
+                              title="Copier les identifiants pour WhatsApp ou SMS"
+                            >
+                              <Copy className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />
+                              <span>Copier invitation</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleResetTeacherPassword(prof)}
+                              className="btn-pill-white !min-h-[36px] !py-1 !px-3 !text-xs flex items-center gap-1.5 hover:border-[#FFE15C]"
+                              title="Générer un nouveau mot de passe temporaire pour ce professeur"
+                            >
+                              <KeyRound className="w-3.5 h-3.5 text-[#E5483D]" strokeWidth={2.5} />
+                              <span>Nouveau MDP</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Êtes-vous sûr de vouloir supprimer le compte enseignant de ${prof.prenom} ${prof.nom} ? Ses groupes seront automatiquement réattribués à la Direction.`
+                                  )
+                                ) {
+                                  deleteUser(prof.id);
+                                }
+                              }}
+                              className="p-2 rounded-full text-[#4A5487] hover:text-[#E5483D] hover:bg-[#FFF0D4] transition-colors"
+                              title="Supprimer le profil enseignant"
+                            >
+                              <Trash2 className="w-4 h-4" strokeWidth={2.5} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           5. TAB : ÉLÈVES & GROUPES (GÉNÉRATION CODE 6 CHIFFRES)
       ───────────────────────────────────────────────────────────── */}
       {currentTab === 'groupes' && (
@@ -1024,7 +1546,7 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="text"
                   required
@@ -1038,9 +1560,26 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
                   type="text"
                   value={newGroupLieu}
                   onChange={(e) => setNewGroupLieu(e.target.value)}
-                  placeholder="Lieu / Lien (ex: Salle Rayhan)"
+                  placeholder="Lieu / Lien Zoom (ex: Visio Zoom Groupe 1)"
                   className="py-2.5 px-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] text-xs text-[#1B2A7A] focus:outline-none font-bold"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <select
+                  value={newGroupProfId}
+                  onChange={(e) => setNewGroupProfId(e.target.value)}
+                  className="py-2.5 px-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] text-xs text-[#1B2A7A] focus:outline-none font-bold"
+                >
+                  <option value="">Enseignant assigné : Par défaut ({currentUser.prenom} {currentUser.nom})</option>
+                  {users
+                    .filter((u) => u.role === 'prof' || u.role === 'admin')
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        Enseignant : {p.prenom} {p.nom} {p.role === 'admin' ? '(Direction)' : ''}
+                      </option>
+                    ))}
+                </select>
 
                 <input
                   type="number"

@@ -410,10 +410,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
                 Première Connexion
               </h2>
               <p className="text-xs text-[#4A5487] font-baloo leading-relaxed">
-                Bienvenue <strong>{passwordChangeUser.prenom}</strong> ! Vous vous êtes connecté(e) avec votre mot de passe temporaire.
+                Bienvenue <strong>{passwordChangeUser.prenom} {passwordChangeUser.nom}</strong> ! Vous vous êtes connecté(e) avec votre mot de passe temporaire fourni par la direction.
               </p>
               <div className="p-3 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] text-[11px] text-[#8C6D00] font-baloo font-bold">
-                Pour la sécurité de votre compte famille, veuillez choisir votre nouveau mot de passe personnel.
+                {passwordChangeUser.role === 'prof'
+                  ? 'Pour la sécurité des dossiers scolaires et de vos cours sur Sihscool, veuillez définir votre mot de passe personnel.'
+                  : 'Pour la sécurité de votre compte famille, veuillez choisir votre nouveau mot de passe personnel.'}
               </div>
             </div>
 
@@ -502,7 +504,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
               <p className="text-xs text-[#4A5487] font-baloo">
                 {selectedRole === 'parent'
                   ? 'Accès réservé aux parents inscrits par l’établissement'
-                  : 'Entrez votre adresse e-mail rattachée à l’école'}
+                  : 'Accès strictement réservé à l’équipe pédagogique et à la direction'}
               </p>
             </div>
 
@@ -511,6 +513,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
                 <Info className="w-4 h-4 text-[#1B2A7A] shrink-0 mt-0.5" strokeWidth={2.5} />
                 <span>
                   Votre compte famille est créé par l’école lors de l’inscription de votre enfant. Pour votre première connexion, utilisez le <strong>mot de passe temporaire</strong> transmis par la direction.
+                </span>
+              </div>
+            )}
+
+            {selectedRole === 'prof' && (
+              <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] text-[11px] text-[#8C6D00] font-baloo flex items-start gap-2 leading-relaxed font-semibold">
+                <Info className="w-4 h-4 text-[#1B2A7A] shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span>
+                  L’accès enseignant est strictement géré par l’administration. Pour votre première connexion, utilisez le <strong>mot de passe temporaire</strong> transmis par la direction.
                 </span>
               </div>
             )}
@@ -540,17 +551,82 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onOpenLegal }) => {
                     className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-xs font-baloo font-bold"
                   />
                 </div>
+
                 {selectedRole === 'prof' && (
-                  <p className="text-[11px] text-[#4A5487] pl-2 font-baloo">
-                    Pour l'espace Direction / Administrateur : <strong className="text-[#1B2A7A]">direction@sihscool.fr</strong>
-                  </p>
+                  <div className="p-2.5 rounded-2xl bg-[#F0F7FD] border border-[#CDBDF2]/60 text-[11px] text-[#4A5487] space-y-1.5 font-baloo mt-2">
+                    <p className="font-extrabold text-[#1B2A7A]">Identifiants de démonstration configurés :</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail('direction@sihscool.fr');
+                          setPassword('direction123');
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] hover:bg-[#FFE15C] text-[#1B2A7A] font-bold text-[10px] shadow-2xs"
+                      >
+                        Direction (direction123)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail('fatima@sihscool.fr');
+                          setPassword('prof123');
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] hover:bg-[#FFE15C] text-[#1B2A7A] font-bold text-[10px] shadow-2xs"
+                      >
+                        Professeure (prof123)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail('bilal@sihscool.fr');
+                          setPassword('SIH-PROF-9900');
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-[#FFF0D4] border border-[#FFE15C] hover:bg-[#FFE15C] text-[#8C6D00] font-extrabold text-[10px] shadow-2xs"
+                        title="Tester le parcours obligatoire de 1ère connexion enseignant"
+                      >
+                        Nouveau Prof (OTP: SIH-PROF-9900)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedRole === 'parent' && (
+                  <div className="p-2.5 rounded-2xl bg-[#F0F7FD] border border-[#CDBDF2]/60 text-[11px] text-[#4A5487] space-y-1.5 font-baloo mt-2">
+                    <p className="font-extrabold text-[#1B2A7A]">Comptes familles de test :</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail('yasmina.benali@gmail.com');
+                          setPassword('parent123');
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-[#FFFFFF] border border-[#CDBDF2] hover:bg-[#FFE15C] text-[#1B2A7A] font-bold text-[10px] shadow-2xs"
+                      >
+                        Parent actif (parent123)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail('karim.meziani@gmail.com');
+                          setPassword('SIH-1234');
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-[#FFF0D4] border border-[#FFE15C] hover:bg-[#FFE15C] text-[#8C6D00] font-extrabold text-[10px] shadow-2xs"
+                        title="Tester le parcours obligatoire de 1ère connexion parent"
+                      >
+                        Nouveau Parent (OTP: SIH-1234)
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-extrabold font-baloo text-[#1B2A7A]">
-                    {selectedRole === 'parent' ? 'Mot de passe (ou mot de passe temporaire)' : 'Mot de passe'}
+                    {selectedRole === 'parent' || selectedRole === 'prof'
+                      ? 'Mot de passe (ou mot de passe temporaire transmis)'
+                      : 'Mot de passe'}
                   </label>
                   <button
                     type="button"
