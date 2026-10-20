@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" width="240" height="80">
+  <defs>
+    <!-- Soft cloud shadow -->
+    <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1B2A7A" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Cloud background shape -->
+  <path d="M 30 50 
+           Q 20 50 15 40 
+           Q 10 30 22 20 
+           Q 32 8 46 16 
+           Q 60 5 74 18 
+           Q 85 10 95 24 
+           Q 105 35 98 48 
+           Q 92 55 80 55 
+           L 30 55 Z" 
+        fill="#FFF6E3" 
+        filter="url(#soft-shadow)"
+        transform="translate(10, 5) scale(0.9)"/>
+
+  <!-- Golden Sunburst sparkles / rayons de soleil -->
+  <g stroke="#FFE15C" stroke-width="3" stroke-linecap="round">
+    <line x1="38" y1="12" x2="38" y2="4" />
+    <line x1="26" y1="18" x2="20" y2="13" />
+    <line x1="50" y1="18" x2="56" y2="13" />
+    <circle cx="38" cy="20" r="4" fill="#FFE15C" stroke="none" />
+  </g>
+
+  <!-- Word "Sihscool" in Baloo Bhaijaan 2 ExtraBold Navy #1B2A7A -->
+  <text x="68" y="48" 
+        font-family="'Baloo Bhaijaan 2', 'Baloo 2', cursive, sans-serif" 
+        font-size="34" 
+        font-weight="800" 
+        fill="#1B2A7A" 
+        letter-spacing="-0.5">Sihscool</text>
+
+  <!-- Cute notebook Arabic letter (أ) in soft red #E5483D with Hamza -->
+  <g transform="translate(196, 16)">
+    <!-- Little white notebook sheet sticker -->
+    <rect width="32" height="36" rx="8" fill="#FFFFFF" stroke="#CDBDF2" stroke-width="1.5" filter="url(#soft-shadow)"/>
+    <!-- Subtle notebook lines -->
+    <line x1="4" y1="12" x2="28" y2="12" stroke="#E2E8F0" stroke-width="0.8" stroke-dasharray="2,2"/>
+    <line x1="4" y1="20" x2="28" y2="20" stroke="#E2E8F0" stroke-width="0.8" stroke-dasharray="2,2"/>
+    <line x1="4" y1="28" x2="28" y2="28" stroke="#E2E8F0" stroke-width="0.8" stroke-dasharray="2,2"/>
+    <!-- Arabic letter Alif with Hamza in soft red #E5483D -->
+    <text x="16" y="27" 
+          font-family="'Baloo Bhaijaan 2', sans-serif" 
+          font-size="24" 
+          font-weight="800" 
+          fill="#E5483D" 
+          text-anchor="middle">أ</text>
+  </g>
+</svg>

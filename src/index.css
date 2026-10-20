@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: #A9D8F5;
+    background-image: linear-gradient(180deg, #A9D8F5 0%, #BAE2F8 50%, #CDE9FA 100%);
+    color: #1B2A7A;
+    font-family: 'Baloo 2', 'Baloo Bhaijaan 2', cursive, sans-serif;
+    font-weight: 500;
+    min-height: 100vh;
+  }
+
+  /* Headings in Baloo Bhaijaan 2 ExtraBold */
+  h1, h2, h3, h4, .font-heading {
+    font-family: 'Baloo Bhaijaan 2', 'Baloo 2', cursive, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #1B2A7A;
+  }
+
+  /* Arabic text */
+  .font-arabic {
+    font-family: 'Baloo Bhaijaan 2', 'Amiri', serif;
+    font-weight: 700;
+    font-feature-settings: 'kern' 1;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Cloud-shaped card styling with soft blue shadows */
+.cloud-card {
+  background-color: #FFF6E3;
+  border-radius: 28px;
+  box-shadow: 0 10px 25px -5px rgba(27, 42, 122, 0.08), 0 8px 10px -6px rgba(27, 42, 122, 0.04);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.cloud-header {
+  border-radius: 36px 36px 32px 32px;
+}
+
+/* Notebook paper pattern for Arabic letter cards */
+.notebook-tile {
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(27, 42, 122, 0.07);
+  background-image: 
+    linear-gradient(rgba(205, 189, 242, 0.25) 1px, transparent 1px);
+  background-size: 100% 20px;
+  border: 1.5px solid rgba(205, 189, 242, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notebook-tile:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(27, 42, 122, 0.12);
+}
+
+/* Pill buttons */
+.btn-pill-sun {
+  background-color: #FFE15C;
+  color: #1B2A7A;
+  font-family: 'Baloo Bhaijaan 2', cursive, sans-serif;
+  font-weight: 800;
+  border-radius: 9999px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  box-shadow: 0 4px 14px rgba(255, 225, 92, 0.5);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-pill-sun:hover {
+  background-color: #FBD745;
+  transform: translateY(-1px);
+}
+
+.btn-pill-sun:active {
+  transform: scale(0.96);
+}
+
+.btn-pill-white {
+  background-color: #FFFFFF;
+  color: #1B2A7A;
+  font-family: 'Baloo Bhaijaan 2', cursive, sans-serif;
+  font-weight: 700;
+  border-radius: 9999px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  box-shadow: 0 4px 14px rgba(27, 42, 122, 0.08);
+  border: 1.5px solid rgba(205, 189, 242, 0.4);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-pill-white:hover {
+  background-color: #FFF6E3;
+  transform: translateY(-1px);
+}
+
+.btn-pill-white:active {
+  transform: scale(0.96);
+}
+
+/* Lavender pill badge */
+.badge-lavender {
+  background-color: #CDBDF2;
+  color: #1B2A7A;
+  font-family: 'Baloo Bhaijaan 2', cursive, sans-serif;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 4px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+/* Custom friendly scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #A9D8F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CDBDF2;
+  border-radius: 9999px;
+  border: 2px solid #A9D8F5;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFE15C;
+}
+
+.safe-area-pb {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0.5deg);
+  }
+}
+
+.animate-float {
+  animation: floatGentle 5s ease-in-out infinite;
+}
