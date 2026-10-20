@@ -41,11 +41,15 @@ import {
   INITIAL_NOTIFICATIONS,
 } from '../data/mockData';
 import { triggerLessonConfetti, triggerRewardConfetti } from '../utils/confetti';
+import { isSupabaseConfigured, fetchAllDataFromSupabase, syncTableRecord } from '../services/supabase';
 
 interface AppContextType {
   // Theme
   isDark: boolean;
   toggleTheme: () => void;
+
+  // Cloud Database Status
+  isCloudSync: boolean;
 
   // Auth
   currentUser: User | null;
@@ -196,6 +200,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => setLocal('annonces', annonces), [annonces]);
   useEffect(() => setLocal('badgesEleve', badgesEleve), [badgesEleve]);
   useEffect(() => setLocal('notifications', notifications), [notifications]);
+
+  // Initial sync from Supabase Cloud if configured
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    fetchAllDataFromSupabase().then((data) => {
+      if (!data) return;
+      if (data.users && data.users.length > 0) setUsers(data.users);
+      if (data.parentEleves && data.parentEleves.length > 0) setParentEleves(data.parentEleves);
+      if (data.groupes && data.groupes.length > 0) setGroupes(data.groupes);
+      if (data.groupeEleves && data.groupeEleves.length > 0) setGroupeEleves(data.groupeEleves);
+      if (data.seances && data.seances.length > 0) setSeances(data.seances);
+      if (data.presences && data.presences.length > 0) setPresences(data.presences);
+      if (data.progressions && data.progressions.length > 0) setProgressions(data.progressions);
+      if (data.devoirs && data.devoirs.length > 0) setDevoirs(data.devoirs);
+      if (data.rendus && data.rendus.length > 0) setRendus(data.rendus);
+      if (data.appreciations && data.appreciations.length > 0) setAppreciations(data.appreciations);
+      if (data.paiements && data.paiements.length > 0) setPaiements(data.paiements);
+      if (data.messages && data.messages.length > 0) setMessages(data.messages);
+      if (data.annonces && data.annonces.length > 0) setAnnonces(data.annonces);
+      if (data.badgesEleve && data.badgesEleve.length > 0) setBadgesEleve(data.badgesEleve);
+    });
+  }, []);
 
   // Auth Operations
   const loginAs = (user: User) => {
@@ -805,6 +831,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isDark,
         toggleTheme,
+        isCloudSync: isSupabaseConfigured(),
         currentUser,
         loginAs,
         loginWithEmail,

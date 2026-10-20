@@ -27,6 +27,8 @@ import {
   Check,
   Download,
   ArrowRight,
+  Database,
+  Cloud,
 } from 'lucide-react';
 
 interface TeacherViewProps {
@@ -60,6 +62,8 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
     getGroupsOfTeacher,
     getStudentsOfTeacher,
     getStudentsOfGroup,
+    isCloudSync,
+    exportDataJson,
   } = useApp();
 
   const isSuperAdmin = currentUser?.role === 'admin';
@@ -1104,6 +1108,70 @@ export const TeacherView: React.FC<TeacherViewProps> = ({ currentTab, onNavigate
       ───────────────────────────────────────────────────────────── */}
       {currentTab === 'admin' && (
         <div className="space-y-6">
+          {/* Base de Données Status & Configuration */}
+          <div className="cloud-card p-6 border-4 border-white space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                    isCloudSync ? 'bg-[#58CC02]/20 text-[#2B7A00]' : 'bg-[#FFE15C]/30 text-[#8C6D00]'
+                  }`}
+                >
+                  <Database className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-baloo font-extrabold text-xl text-[#1B2A7A]">
+                      Base de Données
+                    </h3>
+                    {isCloudSync ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#EAF7E8] text-[#2B7A00] border border-[#BDE8B7]">
+                        <span className="w-2 h-2 rounded-full bg-[#2B7A00] animate-pulse" />
+                        Supabase Cloud Connecté
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FFF9E6] text-[#8C6D00] border border-[#FFE799]">
+                        <span className="w-2 h-2 rounded-full bg-[#E5A800]" />
+                        Stockage Local (Navigateur)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#4A5487] font-baloo mt-0.5">
+                    {isCloudSync
+                      ? 'Toutes les données des élèves, devoirs et audios sont répliquées en direct sur PostgreSQL Cloud.'
+                      : 'Les données sont actuellement sauvegardées dans ce navigateur. Supabase Cloud est prêt à être branché.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={exportDataJson}
+                  className="btn-cloud-secondary text-xs px-3.5 py-2 flex items-center gap-2"
+                  title="Télécharger une sauvegarde locale de toutes les données"
+                >
+                  <Download className="w-4 h-4 stroke-[2.5]" />
+                  Exporter Sauvegarde JSON
+                </button>
+              </div>
+            </div>
+
+            {!isCloudSync && (
+              <div className="bg-[#FFF6E3] border border-[#FFE15C] rounded-2xl p-4 text-xs font-baloo space-y-2 text-[#4A5487]">
+                <div className="flex items-center gap-2 font-bold text-[#1B2A7A]">
+                  <Cloud className="w-4 h-4 text-[#1B2A7A] stroke-[2.5]" />
+                  <span>Comment activer la base de données Cloud partagée (Supabase) ?</span>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 pl-1">
+                  <li>Créez un projet gratuit sur <strong>supabase.com</strong></li>
+                  <li>Dans le <strong>SQL Editor</strong> de Supabase, collez et exécutez le script <strong>supabase/schema.sql</strong> (14 tables complètes)</li>
+                  <li>Renseignez <strong>VITE_SUPABASE_URL</strong> et <strong>VITE_SUPABASE_ANON_KEY</strong> dans votre fichier <strong>.env</strong></li>
+                </ol>
+              </div>
+            )}
+          </div>
+
           <div className="cloud-card p-6 sm:p-7 border-4 border-white space-y-2">
             <span className="badge-lavender text-xs">Direction & Trésorerie</span>
             <h2 className="font-baloo font-extrabold text-2xl sm:text-3xl text-[#1B2A7A]">
