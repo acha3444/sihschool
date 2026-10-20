@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'parent' | 'eleve';
+export type UserRole = 'admin' | 'prof' | 'parent' | 'eleve';
 export type Role = UserRole;
 export type Formation = 'nourania' | 'litteraire' | 'eveil';
 export type EleveType = 'enfant' | 'adulte';
@@ -22,7 +22,10 @@ export interface Groupe {
   jour: string;
   heure: string;
   lien_zoom?: string | null;
+  prof_id?: string | null;
   created_at: string;
+  // Joined fields
+  prof?: Profile | null;
 }
 
 export interface Eleve {

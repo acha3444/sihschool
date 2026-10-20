@@ -8,6 +8,7 @@ import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeM
 import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { ProfDashboard } from './pages/prof/ProfDashboard';
 import { FamilleDashboard } from './pages/famille/FamilleDashboard';
 import { EleveDashboard } from './pages/eleve/EleveDashboard';
 import { Role } from './types/database';
@@ -81,6 +82,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children 
 
   if (!allowedRoles.includes(profile.role)) {
     if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+    if (profile.role === 'prof') return <Navigate to="/prof" replace />;
     if (profile.role === 'parent') return <Navigate to="/famille" replace />;
     if (profile.role === 'eleve') return <Navigate to="/eleve" replace />;
     return <Navigate to="/login" replace />;
@@ -114,6 +116,7 @@ const RootRedirect: React.FC = () => {
   }
 
   if (profile.role === 'admin') return <Navigate to="/admin" replace />;
+  if (profile.role === 'prof') return <Navigate to="/prof" replace />;
   if (profile.role === 'parent') return <Navigate to="/famille" replace />;
   if (profile.role === 'eleve') return <Navigate to="/eleve" replace />;
 
@@ -164,6 +167,16 @@ export const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Espace Enseignante */}
+          <Route
+            path="/prof"
+            element={
+              <ProtectedRoute allowedRoles={['prof']}>
+                <ProfDashboard />
               </ProtectedRoute>
             }
           />

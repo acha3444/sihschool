@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const cleanRole = role === 'eleve' ? 'eleve' : 'parent';
+    const cleanRole = role === 'eleve' ? 'eleve' : role === 'prof' ? 'prof' : 'parent';
 
     // Génération d'un mot de passe temporaire clair et mémorisable
     const tempPassword = `SIH-${Math.floor(100000 + Math.random() * 900000)}`;

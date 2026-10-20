@@ -37,9 +37,10 @@ import {
   TrendingUp,
   FileText,
   UserPlus,
+  BookOpen,
 } from 'lucide-react';
 
-type AdminTab = 'aujourdhui' | 'eleves' | 'groupes' | 'paiements' | 'annonces';
+type AdminTab = 'aujourdhui' | 'eleves' | 'profs' | 'groupes' | 'paiements' | 'annonces';
 
 export const AdminDashboard: React.FC = () => {
   const { session } = useAuth();
@@ -50,6 +51,7 @@ export const AdminDashboard: React.FC = () => {
   const [groupes, setGroupes] = useState<Groupe[]>([]);
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [parentsProfiles, setParentsProfiles] = useState<Profile[]>([]);
+  const [profsProfiles, setProfsProfiles] = useState<Profile[]>([]);
   const [seances, setSeances] = useState<Seance[]>([]);
   const [presences, setPresences] = useState<Presence[]>([]);
   const [progressions, setProgressions] = useState<Progression[]>([]);
@@ -98,6 +100,21 @@ export const AdminDashboard: React.FC = () => {
   } | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
 
+  // Modal Ajouter une Enseignante
+  const [isAddProfModalOpen, setIsAddProfModalOpen] = useState(false);
+  const [newProfPrenom, setNewProfPrenom] = useState('');
+  const [newProfNom, setNewProfNom] = useState('');
+  const [newProfEmail, setNewProfEmail] = useState('');
+  const [newProfTel, setNewProfTel] = useState('');
+  const [addProfLoading, setAddProfLoading] = useState(false);
+  const [addProfError, setAddProfError] = useState('');
+  const [createdProfResult, setCreatedProfResult] = useState<{
+    tempPassword?: string;
+    email?: string;
+    prenom?: string;
+  } | null>(null);
+  const [copiedProfInvite, setCopiedProfInvite] = useState(false);
+
   // Progression modifiable pour fiche élève
   const [editProgLecon, setEditProgLecon] = useState<number>(1);
   const [editProgCommentaire, setEditProgCommentaire] = useState<string>('');
@@ -117,6 +134,7 @@ export const AdminDashboard: React.FC = () => {
   const [groupeJour, setGroupeJour] = useState('Mercredi');
   const [groupeHeure, setGroupeHeure] = useState('14:00 - 15:30');
   const [groupeLienZoom, setGroupeLienZoom] = useState('');
+  const [groupeProfId, setGroupeProfId] = useState('');
 
   // Modal Séance pour Groupe
   const [isAddSeanceModalOpen, setIsAddSeanceModalOpen] = useState(false);
@@ -149,6 +167,7 @@ export const AdminDashboard: React.FC = () => {
         groupesRes,
         elevesRes,
         parentsRes,
+        profsRes,
         seancesRes,
         presencesRes,
         progressionsRes,
@@ -160,6 +179,7 @@ export const AdminDashboard: React.FC = () => {
         supabase.from('groupes').select('*').order('nom'),
         supabase.from('eleves').select('*, parent:profiles!eleves_parent_id_fkey(*), groupe:groupes(*)').order('nom'),
         supabase.from('profiles').select('*').eq('role', 'parent').order('nom'),
+        supabase.from('profiles').select('*').eq('role', 'prof').order('prenom'),
         supabase.from('seances').select('*, groupe:groupes(*)').order('date', { ascending: false }),
         supabase.from('presences').select('*'),
         supabase.from('progressions').select('*'),
@@ -172,6 +192,7 @@ export const AdminDashboard: React.FC = () => {
       if (groupesRes.data) setGroupes(groupesRes.data);
       if (elevesRes.data) setEleves(elevesRes.data);
       if (parentsRes.data) setParentsProfiles(parentsRes.data);
+      if (profsRes.data) setProfsProfiles(profsRes.data);
       if (seancesRes.data) setSeances(seancesRes.data);
       if (presencesRes.data) setPresences(presencesRes.data);
       if (progressionsRes.data) setProgressions(progressionsRes.data);
@@ -454,7 +475,58 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 5. GROUPES : Création / Modification
+  // 5. ENSEIGNANTES : Création de compte
+  // ─────────────────────────────────────────────────────────────────────────────
+  const handleAddProf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddProfError('');
+    if (!newProfEmail || !newProfPrenom) {
+      setAddProfError('Le prénom et l\'adresse e-mail sont obligatoires.');
+      return;
+    }
+
+    setAddProfLoading(true);
+    try {
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          prenom: newProfPrenom.trim(),
+          nom: newProfNom.trim(),
+          email: newProfEmail.trim().toLowerCase(),
+          telephone: newProfTel.trim(),
+          role: 'prof',
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erreur lors de la création du compte enseignante.');
+      }
+
+      setCreatedProfResult({
+        tempPassword: data.tempPassword,
+        email: data.email,
+        prenom: newProfPrenom,
+      });
+
+      setNewProfPrenom('');
+      setNewProfNom('');
+      setNewProfEmail('');
+      setNewProfTel('');
+      await loadAllData();
+    } catch (err: any) {
+      setAddProfError(err.message || 'Impossible de créer le compte enseignante.');
+    } finally {
+      setAddProfLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 6. GROUPES : Création / Modification
   // ─────────────────────────────────────────────────────────────────────────────
   const handleSaveGroupe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -470,6 +542,7 @@ export const AdminDashboard: React.FC = () => {
             jour: groupeJour,
             heure: groupeHeure,
             lien_zoom: groupeLienZoom.trim() || null,
+            prof_id: groupeProfId || null,
           })
           .eq('id', editingGroupeId);
       } else {
@@ -479,6 +552,7 @@ export const AdminDashboard: React.FC = () => {
           jour: groupeJour,
           heure: groupeHeure,
           lien_zoom: groupeLienZoom.trim() || null,
+          prof_id: groupeProfId || null,
         });
       }
 
@@ -486,6 +560,7 @@ export const AdminDashboard: React.FC = () => {
       setEditingGroupeId(null);
       setGroupeNom('');
       setGroupeLienZoom('');
+      setGroupeProfId('');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -622,24 +697,39 @@ export const AdminDashboard: React.FC = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setCreatedAccountResult(null);
-              setIsAddEleveModalOpen(true);
-            }}
-            className="btn-pill-sun text-xs sm:text-sm py-2.5 px-4.5 flex items-center gap-2 self-start sm:self-center shadow-md min-h-[44px]"
-          >
-            <UserPlus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
-            <span>Ajouter un élève</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedProfResult(null);
+                setIsAddProfModalOpen(true);
+              }}
+              className="btn-pill-white text-xs sm:text-sm py-2.5 px-4 flex items-center gap-2 border border-[#CDBDF2] shadow-xs min-h-[44px]"
+            >
+              <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <span>Ajouter une enseignante</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedAccountResult(null);
+                setIsAddEleveModalOpen(true);
+              }}
+              className="btn-pill-sun text-xs sm:text-sm py-2.5 px-4.5 flex items-center gap-2 self-start sm:self-center shadow-md min-h-[44px]"
+            >
+              <UserPlus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <span>Ajouter un élève</span>
+            </button>
+          </div>
         </div>
 
-        {/* 5 Onglets du menu */}
+        {/* 6 Onglets du menu */}
         <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
           {[
             { id: 'aujourdhui', label: 'Aujourd\'hui', icon: Calendar, badge: seancesDuJour.length },
             { id: 'eleves', label: 'Élèves', icon: Users, badge: eleves.length },
+            { id: 'profs', label: 'Enseignantes', icon: BookOpen, badge: profsProfiles.length },
             { id: 'groupes', label: 'Groupes', icon: Layers, badge: groupes.length },
             { id: 'paiements', label: 'Paiements', icon: CreditCard },
             { id: 'annonces', label: 'Annonces', icon: Megaphone, badge: annonces.length },
@@ -1095,6 +1185,122 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────
+          2.5. ONGLET : ENSEIGNANTES (GESTION & CRÉATION DE COMPTE)
+      ───────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'profs' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-[#1B2A7A]">Équipe Enseignante</h2>
+              <p className="text-xs text-[#4A5487] font-semibold">
+                Gérez les comptes des enseignantes et visualisez les groupes qui leur sont attribués.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedProfResult(null);
+                setIsAddProfModalOpen(true);
+              }}
+              className="btn-pill-sun !min-h-[42px] !text-xs !py-1.5 !px-4 flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <span>+ Ajouter une enseignante</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {profsProfiles.map((prof) => {
+              const groupesDuProf = groupes.filter((g) => g.prof_id === prof.id);
+
+              return (
+                <div
+                  key={prof.id}
+                  className="cloud-card p-5 border-3 border-white shadow-soft-blue space-y-3 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="badge-lavender text-[10px] font-extrabold uppercase flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        Professeure
+                      </span>
+                      <span className="text-xs font-bold text-[#4A5487]">
+                        {groupesDuProf.length} groupe(s)
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-black text-[#1B2A7A]">
+                      {prof.prenom} {prof.nom}
+                    </h3>
+
+                    <div className="space-y-1 text-xs text-[#4A5487]">
+                      {prof.telephone && (
+                        <p className="flex items-center gap-1.5 font-bold">
+                          <span>📞 {prof.telephone}</span>
+                          <a
+                            href={`https://wa.me/${prof.telephone.replace(/\s+/g, '').replace('+', '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#1E7E44] text-[10px] underline ml-1"
+                          >
+                            WhatsApp
+                          </a>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Groupes assignés */}
+                    <div className="pt-2 border-t border-[#CDBDF2]/30">
+                      <p className="text-[10px] font-black uppercase text-[#1B2A7A] mb-1.5">
+                        Groupes attribués :
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {groupesDuProf.map((grp) => (
+                          <span
+                            key={grp.id}
+                            className="text-[11px] font-bold bg-[#FFE15C]/50 text-[#1B2A7A] px-2.5 py-0.5 rounded-full"
+                          >
+                            {grp.nom} ({grp.jour})
+                          </span>
+                        ))}
+                        {groupesDuProf.length === 0 && (
+                          <span className="text-xs text-gray-400 italic">
+                            Aucun groupe assigné pour le moment.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {profsProfiles.length === 0 && (
+            <div className="cloud-card p-12 text-center text-[#4A5487] space-y-3">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto" />
+              <p className="text-base font-bold text-[#1B2A7A]">Aucune enseignante enregistrée</p>
+              <p className="text-xs max-w-sm mx-auto">
+                Cliquez sur le bouton ci-dessous pour créer le compte de votre première enseignante avec un mot de passe temporaire.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedProfResult(null);
+                  setIsAddProfModalOpen(true);
+                }}
+                className="btn-pill-sun !min-h-[42px] !text-xs !py-1.5 !px-5 inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4 text-[#1B2A7A]" />
+                <span>Ajouter une enseignante</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────
           3. ONGLET : GROUPES (CRÉER, MODIFIER, SÉANCES, DEVOIRS)
       ───────────────────────────────────────────────────────────────────── */}
       {activeTab === 'groupes' && (
@@ -1140,6 +1346,15 @@ export const AdminDashboard: React.FC = () => {
                     <p className="text-xs text-[#4A5487] font-semibold">
                       Créneau : <strong>{grp.jour} de {grp.heure}</strong>
                     </p>
+
+                    {(() => {
+                      const profAss = profsProfiles.find((p) => p.id === grp.prof_id);
+                      return (
+                        <p className="text-xs font-bold text-[#1B2A7A]">
+                          👩‍🏫 Enseignante : {profAss ? `${profAss.prenom} ${profAss.nom}` : <span className="text-gray-400 font-normal italic">Non assignée (Direction)</span>}
+                        </p>
+                      );
+                    })()}
 
                     {grp.lien_zoom && (
                       <p className="text-xs text-[#2F5BD1] truncate font-bold">
@@ -1187,6 +1402,7 @@ export const AdminDashboard: React.FC = () => {
                         setGroupeJour(grp.jour);
                         setGroupeHeure(grp.heure);
                         setGroupeLienZoom(grp.lien_zoom || '');
+                        setGroupeProfId(grp.prof_id || '');
                         setIsGroupeModalOpen(true);
                       }}
                       className="p-2 rounded-full text-[#4A5487] hover:text-[#1B2A7A] hover:bg-white ml-auto"
@@ -1760,10 +1976,175 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="text-xs font-extrabold text-[#1B2A7A]">Enseignante assignée :</label>
+                <select
+                  value={groupeProfId}
+                  onChange={(e) => setGroupeProfId(e.target.value)}
+                  className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                >
+                  <option value="">Non assignée (Direction)</option>
+                  {profsProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.prenom} {p.nom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button type="submit" className="btn-pill-sun w-full min-h-[44px] !text-xs mt-2">
                 Enregistrer le groupe
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────
+          MODAL : AJOUTER UNE ENSEIGNANTE & COMPTE VERCEL SERVERLESS
+      ───────────────────────────────────────────────────────────────────── */}
+      {isAddProfModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B2A7A]/50 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg cloud-card p-6 border-4 border-white shadow-cloud-pop space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#CDBDF2]/30 pb-3">
+              <h3 className="font-black text-xl text-[#1B2A7A]">Ajouter une enseignante</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddProfModalOpen(false);
+                  setCreatedProfResult(null);
+                }}
+                className="text-xs text-[#4A5487] hover:text-[#1B2A7A] font-bold"
+              >
+                ✕ Fermer
+              </button>
+            </div>
+
+            {createdProfResult ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-[#EAFBF1] border border-[#C5F3D6] text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-[#1E7E44] mx-auto" />
+                  <h4 className="font-black text-base text-[#1E7E44]">
+                    Compte Enseignante créé avec succès !
+                  </h4>
+                  <p className="text-xs text-[#1B2A7A]">
+                    Transmettez ces identifiants temporaires à l'enseignante. Elle devra définir son mot de passe personnel dès sa première connexion sur <strong className="underline">app.sihschool.com</strong>.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border-2 border-[#FFE15C] space-y-2 text-xs font-bold text-[#1B2A7A]">
+                  <p>👤 <strong>Nom :</strong> {createdProfResult.prenom}</p>
+                  <p>📧 <strong>Identifiant :</strong> {createdProfResult.email}</p>
+                  <p>🔑 <strong>Mot de passe temporaire :</strong> <span className="font-mono text-sm bg-[#FFE15C]/40 px-2 py-0.5 rounded-md">{createdProfResult.tempPassword}</span></p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const msg = `Salam aleykoum ${createdProfResult.prenom},\n\nVoici vos accès à votre Espace Enseignante Sihscool :\n🔗 Lien : https://app.sihschool.com\n📧 Identifiant : ${createdProfResult.email}\n🔑 Mot de passe temporaire : ${createdProfResult.tempPassword}\n\nVous pourrez définir votre mot de passe personnel dès votre première connexion.`;
+                    navigator.clipboard.writeText(msg);
+                    setCopiedProfInvite(true);
+                    setTimeout(() => setCopiedProfInvite(false), 2500);
+                  }}
+                  className="btn-pill-sun w-full min-h-[48px] flex items-center justify-center gap-2 text-xs font-black shadow-md"
+                >
+                  {copiedProfInvite ? (
+                    <>
+                      <CheckCheck className="w-4 h-4 text-[#1E7E44]" />
+                      <span>Invitation copiée dans le presse-papier !</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copier l'invitation pour WhatsApp</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddProfModalOpen(false);
+                    setCreatedProfResult(null);
+                  }}
+                  className="btn-pill-white w-full min-h-[40px] text-xs border border-[#CDBDF2]"
+                >
+                  Terminé
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleAddProf} className="space-y-3 font-baloo">
+                {addProfError && (
+                  <div className="p-3 rounded-2xl bg-[#FDE8E8] border border-[#F8B4B4] text-xs font-bold text-[#9B1C1C] flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{addProfError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-[#1B2A7A]">Prénom *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newProfPrenom}
+                      onChange={(e) => setNewProfPrenom(e.target.value)}
+                      placeholder="Ex: Fatima"
+                      className="w-full py-2.5 px-3.5 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-[#1B2A7A]">Nom</label>
+                    <input
+                      type="text"
+                      value={newProfNom}
+                      onChange={(e) => setNewProfNom(e.target.value)}
+                      placeholder="Ex: Zahra"
+                      className="w-full py-2.5 px-3.5 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-extrabold text-[#1B2A7A]">Adresse e-mail (connexion) *</label>
+                  <input
+                    type="email"
+                    required
+                    value={newProfEmail}
+                    onChange={(e) => setNewProfEmail(e.target.value)}
+                    placeholder="fatima@exemple.com"
+                    className="w-full py-2.5 px-3.5 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-extrabold text-[#1B2A7A]">Téléphone / WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={newProfTel}
+                    onChange={(e) => setNewProfTel(e.target.value)}
+                    placeholder="06 12 34 56 78"
+                    className="w-full py-2.5 px-3.5 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={addProfLoading}
+                  className="btn-pill-sun w-full min-h-[48px] text-xs font-black shadow-md mt-4 flex items-center justify-center gap-2"
+                >
+                  {addProfLoading ? (
+                    <span>Création du compte en cours...</span>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>Créer le compte & Générer l'accès</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

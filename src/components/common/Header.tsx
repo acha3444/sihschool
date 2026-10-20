@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, ShieldCheck, Users, GraduationCap } from 'lucide-react';
+import { LogOut, ShieldCheck, Users, GraduationCap, BookOpen } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { profile, signOut } = useAuth();
@@ -21,11 +21,14 @@ export const Header: React.FC = () => {
           {/* Role Badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-baloo font-bold border border-[#CDBDF2] bg-[#FFFFFF] text-[#1B2A7A] shadow-xs">
             {profile.role === 'admin' && <ShieldCheck className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />}
+            {profile.role === 'prof' && <BookOpen className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />}
             {profile.role === 'parent' && <Users className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />}
             {profile.role === 'eleve' && <GraduationCap className="w-3.5 h-3.5 text-[#1B2A7A]" strokeWidth={2.5} />}
             <span className="font-extrabold text-[11px] sm:text-xs">
               {profile.role === 'admin'
                 ? 'Direction'
+                : profile.role === 'prof'
+                ? 'Enseignante'
                 : profile.role === 'parent'
                 ? 'Espace Famille'
                 : 'Espace Élève'}
@@ -40,7 +43,7 @@ export const Header: React.FC = () => {
               {profile.prenom} {profile.nom}
             </p>
             <p className="text-[10px] text-[#4A5487] font-semibold">
-              {profile.role === 'admin' ? 'Administratrice' : 'Connecté(e)'}
+              {profile.role === 'admin' ? 'Administratrice' : profile.role === 'prof' ? 'Professeure' : 'Connecté(e)'}
             </p>
           </div>
 

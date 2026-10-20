@@ -24,6 +24,7 @@ export const LoginPage: React.FC = () => {
   React.useEffect(() => {
     if (user && profile) {
       if (profile.role === 'admin') navigate('/admin', { replace: true });
+      else if (profile.role === 'prof') navigate('/prof', { replace: true });
       else if (profile.role === 'parent') navigate('/famille', { replace: true });
       else if (profile.role === 'eleve') navigate('/eleve', { replace: true });
     }
@@ -60,6 +61,7 @@ export const LoginPage: React.FC = () => {
     }
 
     if (profileCheck.role === 'admin') navigate('/admin', { replace: true });
+    else if (profileCheck.role === 'prof') navigate('/prof', { replace: true });
     else if (profileCheck.role === 'parent') navigate('/famille', { replace: true });
     else if (profileCheck.role === 'eleve') navigate('/eleve', { replace: true });
     else navigate('/admin', { replace: true });

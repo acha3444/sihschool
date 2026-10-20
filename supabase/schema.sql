@@ -41,7 +41,7 @@ drop table if exists public.users cascade;
 -- PROFILES : id = auth.users.id
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null check (role in ('admin', 'parent', 'eleve')) default 'parent',
+  role text not null check (role in ('admin', 'prof', 'parent', 'eleve')) default 'parent',
   prenom text not null,
   nom text not null default '',
   telephone text,
@@ -49,7 +49,7 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
--- GROUPES : nom, formation, jour, heure, lien_zoom
+-- GROUPES : nom, formation, jour, heure, lien_zoom, prof_id
 create table public.groupes (
   id uuid primary key default gen_random_uuid(),
   nom text not null,
@@ -57,6 +57,7 @@ create table public.groupes (
   jour text not null,
   heure text not null,
   lien_zoom text,
+  prof_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -206,6 +207,52 @@ begin
 end;
 $$;
 
+-- Vérifie si l'utilisateur est enseignante
+create or replace function public.is_prof()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'prof'
+  );
+end;
+$$;
+
+-- Vérifie si l'enseignante est responsable du groupe
+create or replace function public.is_prof_of_groupe(p_groupe_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.groupes
+    where id = p_groupe_id and prof_id = auth.uid()
+  );
+end;
+$$;
+
+-- Vérifie si l'enseignante enseigne à cet élève
+create or replace function public.is_prof_of_eleve(p_eleve_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.eleves e
+    join public.groupes g on g.id = e.groupe_id
+    where e.id = p_eleve_id and g.prof_id = auth.uid()
+  );
+end;
+$$;
+
 -- ==============================================================================
 -- 5. ROW LEVEL SECURITY (RLS) SUR TOUTES LES TABLES
 -- ==============================================================================
@@ -263,6 +310,11 @@ create policy "Eleve adulte lit sa fiche"
   for select
   using (compte_id = auth.uid());
 
+create policy "Prof lit ses eleves"
+  on public.eleves
+  for select
+  using (public.is_prof_of_eleve(id));
+
 -- ------------------------------------------------------------------------------
 -- POLICIES : GROUPES
 -- ------------------------------------------------------------------------------
@@ -271,6 +323,11 @@ create policy "Admin total sur groupes"
   for all
   using (public.is_admin())
   with check (public.is_admin());
+
+create policy "Prof lit ses groupes"
+  on public.groupes
+  for select
+  using (prof_id = auth.uid());
 
 create policy "Parent lit les groupes de ses enfants"
   on public.groupes
@@ -301,6 +358,12 @@ create policy "Admin total sur seances"
   using (public.is_admin())
   with check (public.is_admin());
 
+create policy "Prof gere ses seances"
+  on public.seances
+  for all
+  using (public.is_prof_of_groupe(groupe_id))
+  with check (public.is_prof_of_groupe(groupe_id));
+
 create policy "Parent lit les seances de ses enfants"
   on public.seances
   for select
@@ -330,6 +393,22 @@ create policy "Admin total sur presences"
   using (public.is_admin())
   with check (public.is_admin());
 
+create policy "Prof gere ses presences"
+  on public.presences
+  for all
+  using (
+    exists (
+      select 1 from public.seances s
+      where s.id = presences.seance_id and public.is_prof_of_groupe(s.groupe_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.seances s
+      where s.id = presences.seance_id and public.is_prof_of_groupe(s.groupe_id)
+    )
+  );
+
 create policy "Parent lit les presences de ses enfants"
   on public.presences
   for select
@@ -349,6 +428,12 @@ create policy "Admin total sur progressions"
   using (public.is_admin())
   with check (public.is_admin());
 
+create policy "Prof gere ses progressions"
+  on public.progressions
+  for all
+  using (public.is_prof_of_eleve(eleve_id))
+  with check (public.is_prof_of_eleve(eleve_id));
+
 create policy "Parent lit la progression de ses enfants"
   on public.progressions
   for select
@@ -367,6 +452,12 @@ create policy "Admin total sur devoirs"
   for all
   using (public.is_admin())
   with check (public.is_admin());
+
+create policy "Prof gere ses devoirs"
+  on public.devoirs
+  for all
+  using (public.is_prof_of_groupe(groupe_id))
+  with check (public.is_prof_of_groupe(groupe_id));
 
 create policy "Parent lit les devoirs du groupe de ses enfants"
   on public.devoirs
@@ -396,6 +487,12 @@ create policy "Admin total sur appreciations"
   for all
   using (public.is_admin())
   with check (public.is_admin());
+
+create policy "Prof gere ses appreciations"
+  on public.appreciations
+  for all
+  using (public.is_prof_of_eleve(eleve_id))
+  with check (public.is_prof_of_eleve(eleve_id));
 
 create policy "Parent lit les appreciations de ses enfants"
   on public.appreciations
@@ -434,6 +531,17 @@ create policy "Admin total sur annonces"
   for all
   using (public.is_admin())
   with check (public.is_admin());
+
+create policy "Prof lit les annonces de ses groupes ou generales"
+  on public.annonces
+  for select
+  using (
+    public.is_prof()
+    and (
+      groupe_id is null
+      or public.is_prof_of_groupe(groupe_id)
+    )
+  );
 
 create policy "Parent lit les annonces generales ou de ses enfants"
   on public.annonces
