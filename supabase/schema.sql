@@ -147,15 +147,15 @@ create table public.annonces (
 );
 
 -- INDEX PERFORMANCES
-create index ifnot_exists idx_eleves_parent on public.eleves(parent_id);
-create index ifnot_exists idx_eleves_compte on public.eleves(compte_id);
-create index ifnot_exists idx_eleves_groupe on public.eleves(groupe_id);
-create index ifnot_exists idx_seances_groupe_date on public.seances(groupe_id, date);
-create index ifnot_exists idx_presences_seance on public.presences(seance_id);
-create index ifnot_exists idx_progressions_eleve on public.progressions(eleve_id);
-create index ifnot_exists idx_paiements_eleve on public.paiements(eleve_id);
-create index ifnot_exists idx_devoirs_groupe on public.devoirs(groupe_id);
-create index ifnot_exists idx_annonces_groupe on public.annonces(groupe_id);
+create index if not exists idx_eleves_parent on public.eleves(parent_id);
+create index if not exists idx_eleves_compte on public.eleves(compte_id);
+create index if not exists idx_eleves_groupe on public.eleves(groupe_id);
+create index if not exists idx_seances_groupe_date on public.seances(groupe_id, date);
+create index if not exists idx_presences_seance on public.presences(seance_id);
+create index if not exists idx_progressions_eleve on public.progressions(eleve_id);
+create index if not exists idx_paiements_eleve on public.paiements(eleve_id);
+create index if not exists idx_devoirs_groupe on public.devoirs(groupe_id);
+create index if not exists idx_annonces_groupe on public.annonces(groupe_id);
 
 -- ==============================================================================
 -- 4. FONCTIONS HELPER DE SÉCURITÉ (SECURITY DEFINER)
