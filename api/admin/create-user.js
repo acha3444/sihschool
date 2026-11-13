@@ -38,15 +38,15 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Session invalide ou expirée.' });
     }
 
-    // 3. Vérifier que l'appelant est bien administrateur
+    // 3. Vérifier le rôle de l'appelant : admin (tout) ou prof (parents et élèves uniquement)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', userData.user.id)
       .single();
 
-    if (profileError || profile?.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès refusé : seuls les administrateurs peuvent créer des comptes.' });
+    if (profileError || (profile?.role !== 'admin' && profile?.role !== 'prof')) {
+      return res.status(403).json({ error: 'Accès refusé : seuls la direction et l\'enseignante peuvent créer des comptes.' });
     }
 
     // 4. Valider les paramètres du nouveau compte
@@ -57,6 +57,10 @@ export default async function handler(req, res) {
 
     const cleanEmail = email.toLowerCase().trim();
     const cleanRole = role === 'eleve' ? 'eleve' : role === 'prof' ? 'prof' : 'parent';
+
+    if (cleanRole === 'prof' && profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Seule la direction peut créer un compte enseignante.' });
+    }
 
     // Génération d'un mot de passe temporaire clair et mémorisable
     const tempPassword = `SIH-${Math.floor(100000 + Math.random() * 900000)}`;

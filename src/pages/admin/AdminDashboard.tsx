@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { InscriptionsPanel } from '../../components/common/InscriptionsPanel';
 import {
   Profile,
   Groupe,
@@ -41,11 +42,11 @@ import {
   KeyRound,
 } from 'lucide-react';
 
-type AdminTab = 'aujourdhui' | 'eleves' | 'profs' | 'groupes' | 'paiements' | 'annonces';
+type AdminTab = 'eleves' | 'profs' | 'groupes' | 'annonces';
 
 export const AdminDashboard: React.FC = () => {
   const { session } = useAuth();
-  const [activeTab, setActiveTab] = useState<AdminTab>('aujourdhui');
+  const [activeTab, setActiveTab] = useState<AdminTab>('eleves');
   const [loading, setLoading] = useState(true);
 
   // Données globales
@@ -692,6 +693,20 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Supprimer un Devoir
+  const handleDeleteDevoir = async (devoirId: string) => {
+    if (!confirm('Êtes-vous sûre de vouloir supprimer ce devoir ? Cette action est irréversible.')) return;
+    try {
+      await supabase.from('devoir_rendus').delete().eq('devoir_id', devoirId);
+      const { error } = await supabase.from('devoirs').delete().eq('id', devoirId);
+      if (error) throw error;
+      setDevoirs((prev) => prev.filter((d) => d.id !== devoirId));
+      alert('Devoir supprimé avec succès !');
+    } catch (err: any) {
+      alert('Erreur suppression devoir : ' + err.message);
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
   // 6. PAIEMENTS : Marquer payé en 1 clic
   // ─────────────────────────────────────────────────────────────────────────────
@@ -775,7 +790,7 @@ export const AdminDashboard: React.FC = () => {
               Tableau de Bord Administratif
             </h1>
             <p className="text-xs sm:text-sm text-[#4A5487] font-semibold mt-0.5">
-              Suivi en direct des séances, appel, élèves, groupes, paiements et annonces.
+              Comptes (enseignantes, parents, élèves), groupes, liens Zoom et annonces.
             </p>
           </div>
 
@@ -807,28 +822,23 @@ export const AdminDashboard: React.FC = () => {
               <span>Ajouter une enseignante</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCreatedAccountResult(null);
-                setIsAddEleveModalOpen(true);
-              }}
+            <a
+              href="/prof"
               className="btn-pill-sun text-xs sm:text-sm py-2.5 px-4.5 flex items-center gap-2 self-start sm:self-center shadow-md min-h-[44px]"
+              title="Donner des devoirs, écouter et corriger les vocaux"
             >
-              <UserPlus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
-              <span>Ajouter un élève</span>
-            </button>
+              <BookOpen className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <span>Espace devoirs</span>
+            </a>
           </div>
         </div>
 
         {/* 6 Onglets du menu */}
         <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
           {[
-            { id: 'aujourdhui', label: 'Aujourd\'hui', icon: Calendar, badge: seancesDuJour.length },
-            { id: 'eleves', label: 'Élèves', icon: Users, badge: eleves.length },
+            { id: 'eleves', label: 'Élèves & comptes', icon: Users, badge: eleves.length },
             { id: 'profs', label: 'Enseignantes', icon: BookOpen, badge: profsProfiles.length },
-            { id: 'groupes', label: 'Groupes', icon: Layers, badge: groupes.length },
-            { id: 'paiements', label: 'Paiements', icon: CreditCard },
+            { id: 'groupes', label: 'Groupes & Zoom', icon: Layers, badge: groupes.length },
             { id: 'annonces', label: 'Annonces', icon: Megaphone, badge: annonces.length },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -859,469 +869,8 @@ export const AdminDashboard: React.FC = () => {
         </nav>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────
-          1. ONGLET : AUJOURD'HUI & APPEL
-      ───────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'aujourdhui' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-extrabold text-[#1B2A7A]">Date des séances :</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="py-1.5 px-3 rounded-full bg-white border-2 border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] focus:outline-none min-h-[44px]"
-              />
-              {selectedDate === todayDate && (
-                <span className="badge-lavender text-[11px] font-extrabold">Aujourd'hui</span>
-              )}
-            </div>
-          </div>
-
-          {seancesDuJour.length === 0 ? (
-            <div className="cloud-card p-8 border-4 border-white text-center space-y-3 shadow-soft-blue">
-              <Calendar className="w-10 h-10 text-[#4A5487] mx-auto opacity-60" />
-              <h3 className="text-lg font-extrabold text-[#1B2A7A]">Aucune séance prévue pour cette date</h3>
-              <p className="text-xs text-[#4A5487] max-w-sm mx-auto">
-                Vous pouvez programmer une séance pour l'un de vos groupes dans l'onglet « Groupes ».
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5">
-              {seancesDuJour.map((seance) => {
-                const groupe = seance.groupe;
-                const groupeEleves = eleves.filter((e) => e.groupe_id === seance.groupe_id);
-                const isAppelOpen = selectedSeanceForAppel === seance.id;
-
-                const presencesSeance = presences.filter((p) => p.seance_id === seance.id);
-                const presentCount = presencesSeance.filter((p) => p.statut === 'present').length;
-                const absentCount = presencesSeance.filter((p) => p.statut === 'absent').length;
-
-                return (
-                  <div
-                    key={seance.id}
-                    className="cloud-card p-5 sm:p-6 border-3 border-white shadow-soft-blue space-y-4"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#CDBDF2]/30 pb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="badge-lavender text-[11px] font-extrabold uppercase">
-                            {groupe?.formation || 'Nourania'}
-                          </span>
-                          <span className="text-xs font-bold text-[#4A5487] flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {groupe?.heure || '14:00 - 15:30'}
-                          </span>
-                        </div>
-                        <h3 className="text-xl font-black text-[#1B2A7A] mt-1">
-                          {groupe?.nom || 'Groupe'}
-                        </h3>
-                        {seance.theme && (
-                          <p className="text-xs text-[#4A5487] font-semibold mt-0.5">
-                            Thème du jour : <strong>{seance.theme}</strong>
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {groupe?.lien_zoom && (
-                          <a
-                            href={groupe.lien_zoom}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-pill-white !min-h-[40px] !py-1.5 !px-3 !text-xs flex items-center gap-1.5"
-                          >
-                            <Video className="w-4 h-4 text-[#2F5BD1]" />
-                            <span>Lien Zoom</span>
-                          </a>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSeanceForAppel(isAppelOpen ? null : seance.id)}
-                          className="btn-pill-sun !min-h-[40px] !py-1.5 !px-4 !text-xs flex items-center gap-1.5 shadow-sm"
-                        >
-                          <Users className="w-4 h-4 text-[#1B2A7A]" />
-                          <span>{isAppelOpen ? 'Masquer l\'appel' : 'Faire l\'appel'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Résumé de l'appel */}
-                    <div className="flex items-center gap-3 text-xs text-[#4A5487] font-bold">
-                      <span className="text-[#2B7A00]">✓ {presentCount} Présent(s)</span>
-                      <span className="text-[#E5483D]">✗ {absentCount} Absent(s)</span>
-                      <span>· Total groupe : {groupeEleves.length} élève(s)</span>
-                    </div>
-
-                    {/* Liste pour faire l'appel */}
-                    {isAppelOpen && (
-                      <div className="pt-2 space-y-3 animate-fadeIn">
-                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#1B2A7A] border-b border-[#CDBDF2]/30 pb-1">
-                          Élèves du groupe — Cliquez sur le statut pour enregistrer en 1 clic :
-                        </h4>
-
-                        {groupeEleves.length === 0 ? (
-                          <p className="text-xs text-[#4A5487] italic">Aucun élève rattaché à ce groupe.</p>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {groupeEleves.map((eleve) => {
-                              const presence = presences.find(
-                                (p) => p.seance_id === seance.id && p.eleve_id === eleve.id
-                              );
-                              const currentStatut = presence?.statut;
-
-                              return (
-                                <div
-                                  key={eleve.id}
-                                  className="p-3.5 rounded-2xl bg-white border border-[#CDBDF2]/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
-                                >
-                                  <div>
-                                    <p className="font-extrabold text-sm text-[#1B2A7A]">
-                                      {eleve.prenom} {eleve.nom}
-                                    </p>
-                                    <span className="text-[11px] text-[#4A5487]">
-                                      {eleve.type === 'enfant' ? 'Écolier' : 'Adulte'}
-                                    </span>
-                                  </div>
-
-                                  {/* 4 Boutons tactiles (min 44px) */}
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {(
-                                      [
-                                        { id: 'present', label: 'Présent', bg: 'bg-[#58CC02] text-white', border: 'border-[#58CC02]' },
-                                        { id: 'absent', label: 'Absent', bg: 'bg-[#E5483D] text-white', border: 'border-[#E5483D]' },
-                                        { id: 'retard', label: 'Retard', bg: 'bg-[#FFE15C] text-[#1B2A7A]', border: 'border-[#FFE15C]' },
-                                        { id: 'excuse', label: 'Excusé', bg: 'bg-[#CDBDF2] text-[#1B2A7A]', border: 'border-[#CDBDF2]' },
-                                      ] as const
-                                    ).map((btn) => {
-                                      const isSelected = currentStatut === btn.id;
-                                      return (
-                                        <button
-                                          key={btn.id}
-                                          type="button"
-                                          onClick={() => handleMarkPresence(seance.id, eleve.id, btn.id)}
-                                          className={`px-3 py-1.5 rounded-full text-xs font-black transition-all min-h-[44px] min-w-[58px] ${
-                                            isSelected
-                                              ? `${btn.bg} shadow-sm scale-102 ring-2 ring-[#1B2A7A]`
-                                              : 'bg-white text-[#4A5487] border border-[#CDBDF2]/60 hover:bg-[#FFF6E3]'
-                                          }`}
-                                        >
-                                          {btn.label}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
-          2. ONGLET : ÉLÈVES (RECHERCHE + FICHE DÉTAILLÉE + AJOUT)
-      ───────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'eleves' && (
-        <div className="space-y-6">
-          {!selectedEleveDetail ? (
-            <>
-              {/* Barre de recherche */}
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchEleve}
-                    onChange={(e) => setSearchEleve(e.target.value)}
-                    placeholder="Rechercher par prénom, nom ou groupe..."
-                    className="w-full py-3 pl-11 pr-4 rounded-full bg-white border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-sm font-bold text-[#1B2A7A] min-h-[44px]"
-                  />
-                </div>
-              </div>
-
-              {/* Liste des élèves */}
-              {filteredEleves.length === 0 ? (
-                <div className="cloud-card p-8 border-4 border-white text-center text-[#4A5487]">
-                  Aucun élève trouvé.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredEleves.map((eleve) => {
-                    const prog = progressions.find((p) => p.eleve_id === eleve.id);
-                    return (
-                      <div
-                        key={eleve.id}
-                        onClick={() => setSelectedEleveDetail(eleve)}
-                        className="cloud-card p-4 sm:p-5 border-2 border-white hover:border-[#FFE15C] transition-all cursor-pointer shadow-soft-blue flex flex-col justify-between space-y-3"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="badge-lavender text-[10px] font-extrabold uppercase">
-                              {eleve.type === 'enfant' ? 'Écolier' : 'Adulte'}
-                            </span>
-                            <span className="text-[11px] font-bold text-[#8C6D00] bg-[#FFF6E3] px-2 py-0.5 rounded-full border border-[#FFE15C]">
-                              Leçon {prog?.lecon_actuelle || 1}/17
-                            </span>
-                          </div>
-
-                          <h3 className="font-extrabold text-lg text-[#1B2A7A]">
-                            {eleve.prenom} {eleve.nom}
-                          </h3>
-
-                          <p className="text-xs text-[#4A5487]">
-                            Groupe : <strong>{eleve.groupe?.nom || 'Non rattaché'}</strong>
-                          </p>
-
-                          {eleve.type === 'enfant' && eleve.parent && (
-                            <p className="text-xs text-[#4A5487]">
-                              Parent : {eleve.parent.prenom} {eleve.parent.nom}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="pt-2 border-t border-[#CDBDF2]/30 flex items-center justify-between text-xs text-[#1B2A7A] font-extrabold">
-                          <span>Voir la fiche</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          ) : (
-            /* ─── FICHE ÉLÈVE DÉTAILLÉE ─── */
-            <div className="space-y-6 animate-fadeIn">
-              <button
-                type="button"
-                onClick={() => setSelectedEleveDetail(null)}
-                className="btn-pill-white !min-h-[40px] !text-xs !py-1 !px-3 inline-flex items-center gap-1.5"
-              >
-                ← Retour à la liste des élèves
-              </button>
-
-              <div className="cloud-card p-6 border-4 border-white shadow-soft-blue space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#CDBDF2]/40 pb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="badge-lavender text-xs uppercase font-extrabold">
-                        {selectedEleveDetail.type === 'enfant' ? 'Écolier Enfant' : 'Élève Adulte'}
-                      </span>
-                      <span className="text-xs text-[#4A5487] font-bold">
-                        Groupe : {selectedEleveDetail.groupe?.nom || 'Aucun'}
-                      </span>
-                    </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-[#1B2A7A] mt-1">
-                      {selectedEleveDetail.prenom} {selectedEleveDetail.nom}
-                    </h2>
-                  </div>
-
-                  {selectedEleveDetail.parent && (
-                    <div className="p-3 rounded-2xl bg-white border border-[#CDBDF2] text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[#4A5487] block text-[10px] uppercase font-extrabold">Parent rattaché :</span>
-                        <p className="font-bold text-[#1B2A7A]">{selectedEleveDetail.parent.prenom} {selectedEleveDetail.parent.nom}</p>
-                        {selectedEleveDetail.parent.telephone && (
-                          <p className="text-[11px] text-[#4A5487]">{selectedEleveDetail.parent.telephone}</p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        disabled={resetLoading}
-                        onClick={() =>
-                          handleTriggerResetPassword(
-                            { userId: selectedEleveDetail.parent!.id },
-                            `Parent ${selectedEleveDetail.parent!.prenom} ${selectedEleveDetail.parent!.nom}`,
-                            selectedEleveDetail.parent!.telephone || undefined
-                          )
-                        }
-                        className="btn-pill-white !min-h-[34px] !text-[11px] !py-1 !px-3 inline-flex items-center gap-1.5 text-[#1B2A7A] font-bold border border-[#CDBDF2] hover:border-[#FFE15C] shrink-0 self-start sm:self-center"
-                        title="Générer un mot de passe temporaire pour le compte parent"
-                      >
-                        <KeyRound className="w-3.5 h-3.5 text-[#1B2A7A]" />
-                        <span>Réinitialiser mot de passe parent</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {selectedEleveDetail.type === 'adulte' && (selectedEleveDetail.compte_id || selectedEleveDetail.parent_id) && (
-                    <div className="p-3 rounded-2xl bg-white border border-[#CDBDF2] text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[#4A5487] block text-[10px] uppercase font-extrabold">Compte élève adulte :</span>
-                        <p className="font-bold text-[#1B2A7A]">{selectedEleveDetail.prenom} {selectedEleveDetail.nom}</p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={resetLoading}
-                        onClick={() =>
-                          handleTriggerResetPassword(
-                            { userId: (selectedEleveDetail.compte_id || selectedEleveDetail.parent_id)! },
-                            `Élève ${selectedEleveDetail.prenom} ${selectedEleveDetail.nom}`
-                          )
-                        }
-                        className="btn-pill-white !min-h-[34px] !text-[11px] !py-1 !px-3 inline-flex items-center gap-1.5 text-[#1B2A7A] font-bold border border-[#CDBDF2] hover:border-[#FFE15C] shrink-0 self-start sm:self-center"
-                        title="Générer un mot de passe temporaire pour le compte de l'élève"
-                      >
-                        <KeyRound className="w-3.5 h-3.5 text-[#1B2A7A]" />
-                        <span>Réinitialiser mot de passe élève</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Section 1 : Progression Modifiable */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-[#CDBDF2] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-base text-[#1B2A7A] flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-[#1B2A7A]" />
-                      Progression Nourania (Leçon 1 à 17)
-                    </h3>
-                    <span className="text-xs font-bold text-[#8C6D00] bg-[#FFF6E3] px-3 py-1 rounded-full border border-[#FFE15C]">
-                      Leçon actuelle : {editProgLecon} / 17
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1">
-                      <label className="text-xs font-extrabold text-[#1B2A7A]">Numéro de leçon :</label>
-                      <select
-                        value={editProgLecon}
-                        onChange={(e) => setEditProgLecon(Number(e.target.value))}
-                        className="w-full py-2.5 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      >
-                        {Array.from({ length: 17 }, (_, i) => i + 1).map((num) => (
-                          <option key={num} value={num}>
-                            Leçon {num} : Méthode Nourania
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-extrabold text-[#1B2A7A]">Commentaire du professeur :</label>
-                      <input
-                        type="text"
-                        value={editProgCommentaire}
-                        onChange={(e) => setEditProgCommentaire(e.target.value)}
-                        placeholder="Ex: Excellente prononciation, le Soukoun est acquis !"
-                        className="w-full py-2.5 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    {progSaveSuccess && (
-                      <span className="text-xs text-[#2B7A00] font-extrabold flex items-center gap-1">
-                        <Check className="w-4 h-4" /> Progression enregistrée !
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleSaveProgression}
-                      className="ml-auto btn-pill-sun !min-h-[40px] !text-xs !py-1 !px-4"
-                    >
-                      Enregistrer la progression
-                    </button>
-                  </div>
-                </div>
-
-                {/* Section 2 : Appréciations Mensuelles */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-[#CDBDF2] space-y-3">
-                  <h3 className="font-extrabold text-base text-[#1B2A7A] flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-[#1B2A7A]" />
-                    Appréciations par mois
-                  </h3>
-
-                  <form onSubmit={handleAddAppreciation} className="space-y-2 pt-1">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        type="month"
-                        value={newApprecPeriode}
-                        onChange={(e) => setNewApprecPeriode(e.target.value)}
-                        className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      />
-                      <input
-                        type="text"
-                        required
-                        value={newApprecTexte}
-                        onChange={(e) => setNewApprecTexte(e.target.value)}
-                        placeholder="Rédiger une appréciation pour cette période..."
-                        className="sm:col-span-2 py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      {apprecSaveSuccess && (
-                        <span className="text-xs text-[#2B7A00] font-extrabold flex items-center gap-1">
-                          <Check className="w-4 h-4" /> Appréciation ajoutée !
-                        </span>
-                      )}
-                      <button type="submit" className="ml-auto btn-pill-sun !min-h-[38px] !text-xs !py-1 !px-4">
-                        Ajouter l'appréciation
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* Historique appréciations élève */}
-                  <div className="space-y-2 pt-2 border-t border-[#CDBDF2]/30">
-                    {appreciations
-                      .filter((a) => a.eleve_id === selectedEleveDetail.id)
-                      .map((app) => (
-                        <div key={app.id} className="p-3 rounded-xl bg-[#FFF6E3] border border-[#FFE15C] text-xs font-baloo">
-                          <span className="badge-lavender text-[10px] font-extrabold">{app.periode}</span>
-                          <p className="font-semibold text-[#1B2A7A] mt-1">{app.texte}</p>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                {/* Section 3 : Historique des Présences */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-[#CDBDF2] space-y-3">
-                  <h3 className="font-extrabold text-base text-[#1B2A7A] flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-[#1B2A7A]" />
-                    Historique des Présences
-                  </h3>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                    {presences
-                      .filter((p) => p.eleve_id === selectedEleveDetail.id)
-                      .slice(0, 8)
-                      .map((pr) => {
-                        const seanceInfo = seances.find((s) => s.id === pr.seance_id);
-                        return (
-                          <div key={pr.id} className="p-2.5 rounded-xl border border-[#CDBDF2]/60 text-center font-baloo">
-                            <span className="text-[10px] text-[#4A5487] block font-bold">{seanceInfo?.date || 'Séance'}</span>
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase mt-1 ${
-                                pr.statut === 'present'
-                                  ? 'bg-[#EAF7E8] text-[#2B7A00]'
-                                  : pr.statut === 'absent'
-                                  ? 'bg-[#FFF0D4] text-[#E5483D]'
-                                  : 'bg-[#FFF6E3] text-[#8C6D00]'
-                              }`}
-                            >
-                              {pr.statut}
-                            </span>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Élèves & comptes (inscriptions, parents, mots de passe) */}
+      {activeTab === 'eleves' && <InscriptionsPanel />}
 
       {/* ─────────────────────────────────────────────────────────────────────
           2.5. ONGLET : ENSEIGNANTES (GESTION & CRÉATION DE COMPTE)
@@ -1527,20 +1076,6 @@ export const AdminDashboard: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setSeanceGroupeId(grp.id);
-                        setSeanceDate(todayDate);
-                        setSeanceTheme('');
-                        setIsAddSeanceModalOpen(true);
-                      }}
-                      className="btn-pill-sun !min-h-[36px] !py-1 !px-3 !text-xs flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Séance</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
                         setDevoirGroupeId(grp.id);
                         setDevoirTitre('');
                         setDevoirConsigne('');
@@ -1573,115 +1108,28 @@ export const AdminDashboard: React.FC = () => {
 
                   {/* Devoirs actifs */}
                   {devoirsGroupe.length > 0 && (
-                    <div className="pt-2 border-t border-[#CDBDF2]/20">
+                    <div className="pt-2 border-t border-[#CDBDF2]/20 space-y-1">
                       <span className="text-[10px] text-[#4A5487] uppercase font-bold block mb-1">Derniers devoirs :</span>
-                      {devoirsGroupe.slice(0, 2).map((dev) => (
-                        <p key={dev.id} className="text-xs text-[#1B2A7A] truncate">
-                          • <strong>{dev.titre}</strong> (limite: {dev.date_limite || 'Sans'})
-                        </p>
+                      {devoirsGroupe.slice(0, 3).map((dev) => (
+                        <div key={dev.id} className="flex items-center justify-between text-xs text-[#1B2A7A] py-0.5">
+                          <p className="truncate mr-2 font-medium">
+                            • <strong>{dev.titre}</strong> {dev.date_limite && <span className="text-gray-400 text-[10px]">({dev.date_limite})</span>}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDevoir(dev.id)}
+                            title="Supprimer ce devoir"
+                            className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
-          4. ONGLET : PAIEMENTS (TABLEAU DU MOIS + EN 1 CLIC)
-      ───────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'paiements' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-extrabold text-[#1B2A7A]">Mois de cotisation :</label>
-              <input
-                type="month"
-                value={selectedPaiementMois}
-                onChange={(e) => setSelectedPaiementMois(e.target.value)}
-                className="py-1.5 px-3 rounded-full bg-white border-2 border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-xs font-extrabold text-[#1B2A7A] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filterPaiementPendingOnly}
-                onChange={(e) => setFilterPaiementPendingOnly(e.target.checked)}
-                className="w-4 h-4 rounded text-[#1B2A7A]"
-              />
-              <span>Afficher uniquement les cotisations en attente</span>
-            </label>
-          </div>
-
-          <div className="cloud-card p-5 border-3 border-white shadow-soft-blue space-y-3">
-            <h3 className="font-black text-lg text-[#1B2A7A]">
-              État des cotisations pour {selectedPaiementMois}
-            </h3>
-
-            <div className="space-y-2">
-              {eleves
-                .filter((eleve) => {
-                  const paiement = paiements.find(
-                    (p) => p.eleve_id === eleve.id && p.mois === selectedPaiementMois
-                  );
-                  if (filterPaiementPendingOnly) {
-                    return !paiement || paiement.statut === 'en_attente';
-                  }
-                  return true;
-                })
-                .map((eleve) => {
-                  const paiement = paiements.find(
-                    (p) => p.eleve_id === eleve.id && p.mois === selectedPaiementMois
-                  );
-                  const isPaye = paiement?.statut === 'paye';
-
-                  return (
-                    <div
-                      key={eleve.id}
-                      className="p-3.5 rounded-2xl bg-white border border-[#CDBDF2]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-sm text-[#1B2A7A]">
-                            {eleve.prenom} {eleve.nom}
-                          </span>
-                          <span className="text-xs text-[#4A5487]">({eleve.groupe?.nom || 'Sans groupe'})</span>
-                        </div>
-                        <p className="text-[11px] text-[#4A5487] mt-0.5">
-                          Tarif mensuel : <strong>{paiement?.montant || 45} €</strong>
-                          {isPaye && paiement?.date_paiement && (
-                            <span> · Réglé le {paiement.date_paiement} ({paiement.moyen || 'Virement'})</span>
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {isPaye ? (
-                          <span className="px-3 py-1.5 rounded-full text-xs font-black bg-[#EAF7E8] text-[#2B7A00] border border-[#BDE8B7]">
-                            Payé ✓
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="px-3 py-1.5 rounded-full text-xs font-black bg-[#FFF0D4] text-[#E5483D] border border-[#FFE15C]">
-                              En attente
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleMarkPaiementPaye(eleve.id, selectedPaiementMois)}
-                              className="btn-pill-sun !min-h-[38px] !py-1 !px-3 !text-xs shadow-xs"
-                            >
-                              Marquer payé
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
           </div>
         </div>
       )}
@@ -1776,277 +1224,6 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 </div>
               ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
-          MODAL : AJOUTER UN ÉLÈVE & COMPTE VERCEL SERVERLESS
-      ───────────────────────────────────────────────────────────────────── */}
-      {isAddEleveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B2A7A]/50 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg cloud-card p-6 border-4 border-white shadow-cloud-pop space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#CDBDF2]/30 pb-3">
-              <h3 className="font-black text-xl text-[#1B2A7A]">Ajouter un nouvel élève</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddEleveModalOpen(false)}
-                className="text-xs text-[#4A5487] hover:text-[#1B2A7A] font-bold"
-              >
-                Fermer ✕
-              </button>
-            </div>
-
-            {addEleveError && (
-              <div className="p-3 rounded-2xl bg-[#FFF0D4] border border-[#FFE15C] text-[#E5483D] text-xs font-bold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{addEleveError}</span>
-              </div>
-            )}
-
-            {/* Si un mot de passe temporaire vient d'être généré */}
-            {createdAccountResult ? (
-              <div className="p-4 rounded-2xl bg-[#EAF7E8] border border-[#BDE8B7] space-y-3 font-baloo">
-                <div className="flex items-center gap-2 text-[#2B7A00] font-black text-sm">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>Compte créé avec succès !</span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white border border-[#BDE8B7] space-y-1">
-                  <p className="text-xs text-[#4A5487]">
-                    Identifiant : <strong>{createdAccountResult.email}</strong>
-                  </p>
-                  <p className="text-xs text-[#4A5487]">
-                    Mot de passe temporaire :{' '}
-                    <code className="font-mono text-base font-black text-[#E5483D] bg-[#FFF6E3] px-2 py-0.5 rounded">
-                      {createdAccountResult.tempPassword}
-                    </code>
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCopyInvitationMessage}
-                  className="btn-pill-sun w-full !text-xs !py-2.5 flex items-center justify-center gap-2"
-                >
-                  {copiedInvite ? (
-                    <>
-                      <CheckCheck className="w-4 h-4 text-[#2B7A00]" />
-                      <span className="text-[#2B7A00]">Message d'invitation copié !</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Copier le message pour WhatsApp / SMS</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsAddEleveModalOpen(false)}
-                  className="w-full text-center text-xs text-[#4A5487] font-bold py-1"
-                >
-                  Terminer
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleCreateEleveSubmit} className="space-y-4 font-baloo">
-                {/* Type : Enfant ou Adulte */}
-                <div className="space-y-1">
-                  <label className="text-xs font-extrabold text-[#1B2A7A]">Type d'élève :</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setNewEleveType('enfant')}
-                      className={`flex-1 py-2 px-3 rounded-full text-xs font-bold border transition-all ${
-                        newEleveType === 'enfant' ? 'bg-[#FFE15C] text-[#1B2A7A] border-[#FFE15C]' : 'bg-white text-[#4A5487]'
-                      }`}
-                    >
-                      Enfant (rattaché à un parent)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewEleveType('adulte')}
-                      className={`flex-1 py-2 px-3 rounded-full text-xs font-bold border transition-all ${
-                        newEleveType === 'adulte' ? 'bg-[#FFE15C] text-[#1B2A7A] border-[#FFE15C]' : 'bg-white text-[#4A5487]'
-                      }`}
-                    >
-                      Élève Adulte (compte autonome)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Nom et Prénom de l'élève */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-extrabold text-[#1B2A7A]">Prénom de l'élève *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newElevePrenom}
-                      onChange={(e) => setNewElevePrenom(e.target.value)}
-                      placeholder="Prénom"
-                      className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-extrabold text-[#1B2A7A]">Nom de famille *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newEleveNom}
-                      onChange={(e) => setNewEleveNom(e.target.value)}
-                      placeholder="Nom"
-                      className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-extrabold text-[#1B2A7A]">Date de naissance :</label>
-                    <input
-                      type="date"
-                      value={newEleveDateNaissance}
-                      onChange={(e) => setNewEleveDateNaissance(e.target.value)}
-                      className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-extrabold text-[#1B2A7A]">Groupe de cours :</label>
-                    <select
-                      value={newEleveGroupeId}
-                      onChange={(e) => setNewEleveGroupeId(e.target.value)}
-                      className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                    >
-                      <option value="">Sélectionner un groupe</option>
-                      {groupes.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.nom} ({g.jour} {g.heure})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Si Enfant : Choix du Parent */}
-                {newEleveType === 'enfant' ? (
-                  <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] space-y-3">
-                    <label className="text-xs font-extrabold text-[#1B2A7A] block">
-                      Compte Parent référent :
-                    </label>
-
-                    <div className="flex gap-2 text-xs">
-                      <label className="flex items-center gap-1.5 cursor-pointer font-bold">
-                        <input
-                          type="radio"
-                          name="parentMode"
-                          checked={parentChoiceMode === 'new'}
-                          onChange={() => setParentChoiceMode('new')}
-                        />
-                        <span>Créer un nouveau parent</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer font-bold">
-                        <input
-                          type="radio"
-                          name="parentMode"
-                          checked={parentChoiceMode === 'existing'}
-                          onChange={() => setParentChoiceMode('existing')}
-                        />
-                        <span>Choisir un parent existant</span>
-                      </label>
-                    </div>
-
-                    {parentChoiceMode === 'new' ? (
-                      <div className="space-y-2 pt-1">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            required
-                            value={newParentPrenom}
-                            onChange={(e) => setNewParentPrenom(e.target.value)}
-                            placeholder="Prénom du parent *"
-                            className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                          />
-                          <input
-                            type="text"
-                            value={newParentNom}
-                            onChange={(e) => setNewParentNom(e.target.value)}
-                            placeholder="Nom du parent"
-                            className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="email"
-                            required
-                            value={newParentEmail}
-                            onChange={(e) => setNewParentEmail(e.target.value)}
-                            placeholder="Email du parent *"
-                            className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                          />
-                          <input
-                            type="tel"
-                            value={newParentTel}
-                            onChange={(e) => setNewParentTel(e.target.value)}
-                            placeholder="Téléphone"
-                            className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <select
-                        value={selectedParentId}
-                        onChange={(e) => setSelectedParentId(e.target.value)}
-                        className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      >
-                        <option value="">Sélectionnez un parent dans la liste</option>
-                        {parentsProfiles.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.prenom} {p.nom} ({p.telephone || 'Sans tél'})
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                ) : (
-                  /* Si Adulte : compte élève */
-                  <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] space-y-2">
-                    <label className="text-xs font-extrabold text-[#1B2A7A] block">
-                      Accès plateforme de l'élève adulte :
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="email"
-                        required
-                        value={newAdulteEmail}
-                        onChange={(e) => setNewAdulteEmail(e.target.value)}
-                        placeholder="Adresse email de l'élève *"
-                        className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      />
-                      <input
-                        type="tel"
-                        value={newAdulteTel}
-                        onChange={(e) => setNewAdulteTel(e.target.value)}
-                        placeholder="Téléphone portable"
-                        className="py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={addEleveLoading}
-                  className="btn-pill-sun w-full min-h-[48px] !text-sm disabled:opacity-50"
-                >
-                  <span>{addEleveLoading ? 'Création en cours...' : 'Valider l\'inscription de l\'élève'}</span>
-                </button>
-              </form>
             )}
           </div>
         </div>
@@ -2304,53 +1481,6 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </form>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
-          MODAL : CRÉER SÉANCE
-      ───────────────────────────────────────────────────────────────────── */}
-      {isAddSeanceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B2A7A]/50 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm cloud-card p-6 border-4 border-white shadow-cloud-pop space-y-4">
-            <h3 className="font-black text-lg text-[#1B2A7A]">Créer une séance</h3>
-            <form onSubmit={handleAddSeance} className="space-y-3 font-baloo">
-              <div className="space-y-1">
-                <label className="text-xs font-extrabold text-[#1B2A7A]">Date de la séance *</label>
-                <input
-                  type="date"
-                  required
-                  value={seanceDate}
-                  onChange={(e) => setSeanceDate(e.target.value)}
-                  className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-extrabold text-[#1B2A7A]">Thème / Leçon abordée :</label>
-                <input
-                  type="text"
-                  value={seanceTheme}
-                  onChange={(e) => setSeanceTheme(e.target.value)}
-                  placeholder="Ex: Récitation Leçon 4"
-                  className="w-full py-2 px-3 rounded-full bg-white border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A] min-h-[44px]"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddSeanceModalOpen(false)}
-                  className="flex-1 btn-pill-white !min-h-[40px] !text-xs"
-                >
-                  Annuler
-                </button>
-                <button type="submit" className="flex-1 btn-pill-sun !min-h-[40px] !text-xs">
-                  Valider
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

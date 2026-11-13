@@ -45,8 +45,8 @@ export default async function handler(req, res) {
       .eq('id', userData.user.id)
       .single();
 
-    if (profileError || profile?.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès refusé : seuls les administrateurs peuvent réinitialiser les mots de passe.' });
+    if (profileError || (profile?.role !== 'admin' && profile?.role !== 'prof')) {
+      return res.status(403).json({ error: 'Accès refusé : seuls la direction et l\'enseignante peuvent réinitialiser les mots de passe.' });
     }
 
     // 4. Valider le compte cible
@@ -77,6 +77,12 @@ export default async function handler(req, res) {
     const { data: targetUserAuth, error: targetUserError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
     if (targetUserError || !targetUserAuth?.user) {
       return res.status(404).json({ error: 'Utilisateur introuvable dans le système.' });
+    }
+
+    // L'enseignante ne peut réinitialiser que les comptes parents et élèves
+    const targetRole = targetProfile?.role || targetUserAuth.user.user_metadata?.role;
+    if (profile.role === 'prof' && targetRole !== 'parent' && targetRole !== 'eleve') {
+      return res.status(403).json({ error: 'L\'enseignante peut seulement réinitialiser les comptes parents et élèves.' });
     }
 
     const targetEmail = targetUserAuth.user.email;

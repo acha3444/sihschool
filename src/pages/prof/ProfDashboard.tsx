@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import {
+  Profile,
   Groupe,
   Eleve,
   Seance,
@@ -15,6 +16,7 @@ import {
 } from '../../types/database';
 import { AudioPlayer } from '../../components/common/AudioPlayer';
 import { AudioRecorder } from '../../components/common/AudioRecorder';
+import { InscriptionsPanel } from '../../components/common/InscriptionsPanel';
 import {
   Calendar,
   Users,
@@ -36,18 +38,24 @@ import {
   BookOpen,
   Send,
   BookCheck,
+  Edit2,
+  UserCheck,
+  UserPlus,
 } from 'lucide-react';
 
-type ProfTab = 'aujourdhui' | 'seances' | 'devoirs' | 'eleves' | 'groupes' | 'annonces';
+type ProfTab = 'devoirs' | 'inscriptions' | 'groupes' | 'annonces';
 
 export const ProfDashboard: React.FC = () => {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<ProfTab>('aujourdhui');
+  const [activeTab, setActiveTab] = useState<ProfTab>('devoirs');
   const [loading, setLoading] = useState(true);
 
-  // Données de l'enseignante
+  // Données de l'enseignante et globales
   const [mesGroupes, setMesGroupes] = useState<Groupe[]>([]);
+  const [tousLesGroupes, setTousLesGroupes] = useState<Groupe[]>([]);
+  const [profsProfiles, setProfsProfiles] = useState<Profile[]>([]);
   const [mesEleves, setMesEleves] = useState<Eleve[]>([]);
+  const [tousLesEleves, setTousLesEleves] = useState<Eleve[]>([]);
   const [seances, setSeances] = useState<Seance[]>([]);
   const [presences, setPresences] = useState<Presence[]>([]);
   const [progressions, setProgressions] = useState<Progression[]>([]);
@@ -63,6 +71,7 @@ export const ProfDashboard: React.FC = () => {
   const [filterGroupeId, setFilterGroupeId] = useState<string>('all');
   const [searchEleve, setSearchEleve] = useState('');
   const [selectedEleveDetail, setSelectedEleveDetail] = useState<Eleve | null>(null);
+  const [groupesViewFilter, setGroupesViewFilter] = useState<'mes_groupes' | 'tous' | 'a_pourvoir'>('mes_groupes');
 
   // Correction devoirs
   const [correctionStatut, setCorrectionStatut] = useState<Record<string, 'valide' | 'a_reviser'>>({});
@@ -100,98 +109,105 @@ export const ProfDashboard: React.FC = () => {
   const [annonceTitre, setAnnonceTitre] = useState('');
   const [annonceTexte, setAnnonceTexte] = useState('');
 
+  // Modal Créer / Modifier Groupe (Autonomie Enseignante)
+  const [isGroupeModalOpen, setIsGroupeModalOpen] = useState(false);
+  const [editingGroupeId, setEditingGroupeId] = useState<string | null>(null);
+  const [groupeNom, setGroupeNom] = useState('');
+  const [groupeFormation, setGroupeFormation] = useState<'nourania' | 'litteraire' | 'eveil'>('nourania');
+  const [groupeJour, setGroupeJour] = useState('Mercredi');
+  const [groupeHeure, setGroupeHeure] = useState('14:00 - 15:30');
+  const [groupeLienZoom, setGroupeLienZoom] = useState('');
+  const [groupeAutoAssign, setGroupeAutoAssign] = useState(true);
+
   const loadProfData = async () => {
     if (!profile?.id) return;
     setLoading(true);
 
     try {
-      // 1. Récupérer les groupes assignés à cette prof
-      const { data: groupesData } = await supabase
+      // 1. Récupérer TOUS les groupes (avec profil de l'enseignante assignée)
+      const { data: groupesData, error: grpError } = await supabase
         .from('groupes')
-        .select('*')
-        .eq('prof_id', profile.id)
+        .select('*, prof:profiles!groupes_prof_id_fkey(*)')
         .order('nom');
 
-      const grps = (groupesData as Groupe[]) || [];
-      setMesGroupes(grps);
-      const groupeIds = grps.map((g) => g.id);
+      if (grpError) console.error('Erreur chargement groupes:', grpError);
+      const allGrps = (groupesData as Groupe[]) || [];
+      setTousLesGroupes(allGrps);
 
-      if (groupeIds.length > 0) {
-        // Définir les groupes par défaut pour les modals
-        if (!seanceGroupeId) setSeanceGroupeId(groupeIds[0]);
-        if (!devoirGroupeId) setDevoirGroupeId(groupeIds[0]);
-        if (!annonceGroupeId) setAnnonceGroupeId(groupeIds[0]);
+      // La direction voit tous les groupes depuis l'espace devoirs
+      const myGrps = profile.role === 'admin' ? allGrps : allGrps.filter((g) => g.prof_id === profile.id);
+      setMesGroupes(myGrps);
+      const myGroupeIds = myGrps.map((g) => g.id);
 
-        // 2. Élèves de ses groupes
-        const { data: elevesData } = await supabase
-          .from('eleves')
-          .select('*, parent:profiles!eleves_parent_id_fkey(*), groupe:groupes(*)')
-          .in('groupe_id', groupeIds)
-          .order('nom');
-        const els = (elevesData as Eleve[]) || [];
-        setMesEleves(els);
-
-        const eleveIds = els.map((e) => e.id);
-
-        // 3. Séances de ses groupes
-        const { data: seancesData } = await supabase
-          .from('seances')
-          .select('*, groupe:groupes(*)')
-          .in('groupe_id', groupeIds)
-          .order('date', { ascending: false });
-        setSeances((seancesData as Seance[]) || []);
-
-        // 4. Présences
-        const { data: presencesData } = await supabase
-          .from('presences')
-          .select('*');
-        setPresences((presencesData as Presence[]) || []);
-
-        // 5. Progressions des élèves
-        if (eleveIds.length > 0) {
-          const { data: progData } = await supabase
-            .from('progressions')
-            .select('*')
-            .in('eleve_id', eleveIds);
-          setProgressions((progData as Progression[]) || []);
-
-          // 6. Appréciations
-          const { data: apprecData } = await supabase
-            .from('appreciations')
-            .select('*')
-            .in('eleve_id', eleveIds)
-            .order('periode', { ascending: false });
-          setAppreciations((apprecData as Appreciation[]) || []);
-        }
-
-        // 7. Devoirs
-        const { data: devoirsData } = await supabase
-          .from('devoirs')
-          .select('*, groupe:groupes(*)')
-          .in('groupe_id', groupeIds)
-          .order('created_at', { ascending: false });
-        setDevoirs((devoirsData as Devoir[]) || []);
-
-        // 8. Récitations et devoirs rendus par les élèves
-        if (eleveIds.length > 0) {
-          const { data: rendusData } = await supabase
-            .from('devoir_rendus')
-            .select('*, eleve:eleves(*), devoir:devoirs(*)')
-            .in('eleve_id', eleveIds)
-            .order('created_at', { ascending: false });
-          setRendus((rendusData as DevoirRendu[]) || []);
-        }
-      } else {
-        setMesEleves([]);
-        setSeances([]);
-        setPresences([]);
-        setProgressions([]);
-        setDevoirs([]);
-        setRendus([]);
-        setAppreciations([]);
+      // Définir les groupes par défaut pour les modals
+      if (myGroupeIds.length > 0) {
+        if (!seanceGroupeId || !myGroupeIds.includes(seanceGroupeId)) setSeanceGroupeId(myGroupeIds[0]);
+        if (!devoirGroupeId || !myGroupeIds.includes(devoirGroupeId)) setDevoirGroupeId(myGroupeIds[0]);
+        if (!annonceGroupeId || !myGroupeIds.includes(annonceGroupeId)) setAnnonceGroupeId(myGroupeIds[0]);
+      } else if (allGrps.length > 0) {
+        if (!seanceGroupeId) setSeanceGroupeId(allGrps[0].id);
+        if (!devoirGroupeId) setDevoirGroupeId(allGrps[0].id);
+        if (!annonceGroupeId) setAnnonceGroupeId(allGrps[0].id);
       }
 
-      // 8. Annonces
+      // 2. Profils de toutes les enseignantes
+      const { data: profsData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'prof');
+      setProfsProfiles((profsData as Profile[]) || []);
+
+      // 3. Récupérer tous les élèves
+      const { data: elevesData } = await supabase
+        .from('eleves')
+        .select('*, parent:profiles!eleves_parent_id_fkey(*), groupe:groupes(*)')
+        .order('nom');
+      const allEls = (elevesData as Eleve[]) || [];
+      setTousLesEleves(allEls);
+      const myEls = allEls.filter((e) => e.groupe_id && myGroupeIds.includes(e.groupe_id));
+      setMesEleves(myEls);
+
+      // 4. Séances
+      const { data: seancesData } = await supabase
+        .from('seances')
+        .select('*, groupe:groupes(*)')
+        .order('date', { ascending: false });
+      setSeances((seancesData as Seance[]) || []);
+
+      // 5. Présences
+      const { data: presencesData } = await supabase
+        .from('presences')
+        .select('*');
+      setPresences((presencesData as Presence[]) || []);
+
+      // 6. Progressions des élèves
+      const { data: progData } = await supabase
+        .from('progressions')
+        .select('*');
+      setProgressions((progData as Progression[]) || []);
+
+      // 7. Appréciations
+      const { data: apprecData } = await supabase
+        .from('appreciations')
+        .select('*')
+        .order('periode', { ascending: false });
+      setAppreciations((apprecData as Appreciation[]) || []);
+
+      // 8. Devoirs
+      const { data: devoirsData } = await supabase
+        .from('devoirs')
+        .select('*, groupe:groupes(*)')
+        .order('created_at', { ascending: false });
+      setDevoirs((devoirsData as Devoir[]) || []);
+
+      // 9. Récitations / devoirs rendus
+      const { data: rendusData } = await supabase
+        .from('devoir_rendus')
+        .select('*, eleve:eleves(*), devoir:devoirs(*)')
+        .order('created_at', { ascending: false });
+      setRendus((rendusData as DevoirRendu[]) || []);
+
+      // 10. Annonces
       const { data: annoncesData } = await supabase
         .from('annonces')
         .select('*, groupe:groupes(*)')
@@ -417,15 +433,141 @@ export const ProfDashboard: React.FC = () => {
     }
   };
 
-  // Supprimer un devoir
+  // Supprimer un devoir (avec suppression en cascade des rendus associés)
   const handleDeleteDevoir = async (devoirId: string) => {
-    if (!confirm('Êtes-vous sûre de vouloir supprimer ce devoir ?')) return;
+    if (!confirm('Êtes-vous sûre de vouloir supprimer ce devoir ? Cette action est irréversible.')) return;
     try {
+      // 1. Supprimer les rendus associés pour garantir la conformité des clés étrangères
+      const { error: rendusError } = await supabase.from('devoir_rendus').delete().eq('devoir_id', devoirId);
+      if (rendusError) console.warn('Avertissement suppression rendus:', rendusError);
+
+      // 2. Supprimer le devoir
       const { error } = await supabase.from('devoirs').delete().eq('id', devoirId);
       if (error) throw error;
+
       setDevoirs((prev) => prev.filter((d) => d.id !== devoirId));
+      setRendus((prev) => prev.filter((r) => r.devoir_id !== devoirId));
+      if (selectedDevoirForRendus === devoirId) {
+        setSelectedDevoirForRendus(null);
+      }
+      alert('Le devoir a été supprimé avec succès !');
     } catch (err: any) {
-      alert('Erreur suppression devoir : ' + err.message);
+      console.error('Erreur suppression devoir:', err);
+      alert('Erreur suppression devoir : ' + (err.message || 'Impossible de supprimer ce devoir.'));
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GESTION AUTONOME DES GROUPES PAR LE PROFESSEUR
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // S'attribuer un groupe en 1 clic
+  const handleAssignGroup = async (groupeId: string) => {
+    if (!profile?.id) return;
+    try {
+      const { error } = await supabase
+        .from('groupes')
+        .update({ prof_id: profile.id })
+        .eq('id', groupeId);
+      if (error) throw error;
+      await loadProfData();
+      alert('Félicitations ! Vous avez pris en charge cette classe avec succès 🌸');
+    } catch (err: any) {
+      alert('Erreur lors de l\'attribution du groupe : ' + err.message);
+    }
+  };
+
+  // Se désattribuer d'un groupe en 1 clic
+  const handleUnassignGroup = async (groupeId: string) => {
+    if (!confirm('Voulez-vous retirer cette classe de vos groupes en charge ?')) return;
+    try {
+      const { error } = await supabase
+        .from('groupes')
+        .update({ prof_id: null })
+        .eq('id', groupeId);
+      if (error) throw error;
+      await loadProfData();
+    } catch (err: any) {
+      alert('Erreur lors de la désattribution : ' + err.message);
+    }
+  };
+
+  // Ouvrir modal création groupe
+  const handleOpenCreateGroupeModal = () => {
+    setEditingGroupeId(null);
+    setGroupeNom('');
+    setGroupeFormation('nourania');
+    setGroupeJour('Mercredi');
+    setGroupeHeure('14:00 - 15:30');
+    setGroupeLienZoom('');
+    setGroupeAutoAssign(true);
+    setIsGroupeModalOpen(true);
+  };
+
+  // Ouvrir modal modification groupe
+  const handleOpenEditGroupeModal = (grp: Groupe) => {
+    setEditingGroupeId(grp.id);
+    setGroupeNom(grp.nom);
+    setGroupeFormation(grp.formation);
+    setGroupeJour(grp.jour);
+    setGroupeHeure(grp.heure);
+    setGroupeLienZoom(grp.lien_zoom || '');
+    setGroupeAutoAssign(grp.prof_id === profile?.id);
+    setIsGroupeModalOpen(true);
+  };
+
+  // Enregistrer création ou modification de groupe
+  const handleSaveGroupe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupeNom.trim()) return;
+
+    try {
+      if (editingGroupeId) {
+        const { error } = await supabase
+          .from('groupes')
+          .update({
+            nom: groupeNom.trim(),
+            formation: groupeFormation,
+            jour: groupeJour,
+            heure: groupeHeure,
+            lien_zoom: groupeLienZoom.trim() || null,
+            prof_id: groupeAutoAssign ? profile?.id : null,
+          })
+          .eq('id', editingGroupeId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('groupes')
+          .insert({
+            nom: groupeNom.trim(),
+            formation: groupeFormation,
+            jour: groupeJour,
+            heure: groupeHeure,
+            lien_zoom: groupeLienZoom.trim() || null,
+            prof_id: groupeAutoAssign ? profile?.id : null,
+          });
+        if (error) throw error;
+      }
+
+      setIsGroupeModalOpen(false);
+      setEditingGroupeId(null);
+      await loadProfData();
+    } catch (err: any) {
+      alert('Erreur enregistrement groupe : ' + err.message);
+    }
+  };
+
+  // Supprimer un groupe
+  const handleDeleteGroupe = async (groupeId: string) => {
+    if (!confirm('Êtes-vous sûre de vouloir supprimer définitivement ce groupe ? Les séances et devoirs liés seront également supprimés.')) {
+      return;
+    }
+    try {
+      const { error } = await supabase.from('groupes').delete().eq('id', groupeId);
+      if (error) throw error;
+      await loadProfData();
+    } catch (err: any) {
+      alert('Erreur suppression groupe : ' + err.message);
     }
   };
 
@@ -456,17 +598,28 @@ export const ProfDashboard: React.FC = () => {
   };
 
   // Séances du jour
-  const seancesDuJour = seances.filter((s) => s.date === todayDate);
+  const seancesDuJour = seances.filter((s) =>
+    s.date === todayDate && (mesGroupes.length > 0 ? mesGroupes.some((g) => g.id === s.groupe_id) : true)
+  );
 
   // Séances filtrées
-  const filteredSeances = seances.filter((s) =>
-    filterGroupeId === 'all' ? true : s.groupe_id === filterGroupeId
-  );
+  const filteredSeances = seances.filter((s) => {
+    if (filterGroupeId === 'all') {
+      return mesGroupes.length > 0 ? mesGroupes.some((g) => g.id === s.groupe_id) : true;
+    }
+    return s.groupe_id === filterGroupeId;
+  });
 
   // Devoirs filtrés
-  const filteredDevoirs = devoirs.filter((d) =>
-    filterGroupeId === 'all' ? true : d.groupe_id === filterGroupeId
-  );
+  const filteredDevoirs = devoirs.filter((d) => {
+    if (filterGroupeId === 'all') {
+      return mesGroupes.length > 0 ? mesGroupes.some((g) => g.id === d.groupe_id) : true;
+    }
+    return d.groupe_id === filterGroupeId;
+  });
+
+  // Groupes sans prof (à pourvoir)
+  const groupesSansProf = tousLesGroupes.filter((g) => !g.prof_id);
 
   if (loading) {
     return (
@@ -487,58 +640,76 @@ export const ProfDashboard: React.FC = () => {
           <div className="flex items-center gap-2 mb-1">
             <span className="badge-lavender text-xs font-black uppercase flex items-center gap-1.5 py-1 px-3">
               <BookOpen className="w-3.5 h-3.5" />
-              Espace Pédagogique
+              Espace Enseignante
             </span>
             <span className="text-xs font-bold text-[#4A5487]">
-              {mesGroupes.length} groupe(s) · {mesEleves.length} élève(s)
+              {mesGroupes.length} groupe(s) en charge · {mesEleves.length} élève(s) · {tousLesGroupes.length} classe(s) totale(s)
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#1B2A7A]">
             Bonjour {profile?.prenom || 'Professeure'} 🌸
           </h1>
           <p className="text-sm text-[#4A5487] font-semibold">
-            Gérez vos séances, envoyez vos devoirs et suivez la progression Nourania de vos élèves.
+            Donnez les devoirs (texte ou vocal), inscrivez les élèves et partagez les liens Zoom.
           </p>
         </div>
 
         {/* Boutons d'action rapide */}
-        {mesGroupes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => {
-                setDevoirGroupeId(mesGroupes[0].id);
-                setIsAddDevoirModalOpen(true);
-              }}
-              className="btn-pill-sun text-xs sm:text-sm !min-h-[44px] flex items-center gap-2 shadow-sm font-black"
-            >
-              <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
-              <span>+ Donner un devoir</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {mesGroupes.length > 0 && (
+            <>
+              <button
+                onClick={() => {
+                  setDevoirGroupeId(mesGroupes[0].id);
+                  setIsAddDevoirModalOpen(true);
+                }}
+                className="btn-pill-sun text-xs sm:text-sm !min-h-[44px] flex items-center gap-2 shadow-sm font-black"
+              >
+                <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+                <span>+ Donner un devoir</span>
+              </button>
+            </>
+          )}
 
-            <button
-              onClick={() => {
-                setSeanceGroupeId(mesGroupes[0].id);
-                setIsAddSeanceModalOpen(true);
-              }}
-              className="btn-pill-white text-xs sm:text-sm !min-h-[44px] flex items-center gap-2 border border-[#CDBDF2] shadow-xs font-black"
-            >
-              <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
-              <span>+ Planifier une séance</span>
-            </button>
-          </div>
-        )}
+          <button
+            onClick={handleOpenCreateGroupeModal}
+            className="btn-pill-white text-xs sm:text-sm !min-h-[44px] flex items-center gap-2 border border-[#CDBDF2] shadow-xs font-black"
+          >
+            <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+            <span>+ Créer une classe</span>
+          </button>
+        </div>
       </div>
 
       {/* Alerte si aucun groupe n'est encore assigné */}
       {mesGroupes.length === 0 && (
-        <div className="cloud-card p-6 bg-gradient-to-r from-[#FFF6E3] to-white border-2 border-[#FFE15C] space-y-2">
+        <div className="cloud-card p-6 bg-gradient-to-r from-[#FFF6E3] to-white border-2 border-[#FFE15C] space-y-3">
           <div className="flex items-center gap-2 text-[#854D0E] font-black text-base">
             <AlertCircle className="w-5 h-5 text-[#854D0E]" />
-            <span>Aucun groupe ne vous est encore attribué</span>
+            <span>Vous n'avez pas encore de groupe en charge</span>
           </div>
           <p className="text-xs sm:text-sm text-[#4A5487] font-medium leading-relaxed">
-            Votre compte enseignante est bien actif. L'administratrice (Siham) doit simplement vous assigner vos groupes dans le panneau Admin (onglet <strong>Groupes</strong>). Dès que ce sera fait, vos élèves, vos séances et vos devoirs apparaîtront ici automatiquement !
+            Vous disposez des mêmes droits que l'administration pour gérer l'école : vous pouvez vous attribuer une classe existante en 1 clic ou créer votre propre groupe dès maintenant !
           </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              onClick={() => {
+                setActiveTab('groupes');
+                setGroupesViewFilter('a_pourvoir');
+              }}
+              className="btn-pill-sun text-xs font-black flex items-center gap-1.5"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Voir les groupes disponibles ({groupesSansProf.length})</span>
+            </button>
+            <button
+              onClick={handleOpenCreateGroupeModal}
+              className="btn-pill-white text-xs font-black flex items-center gap-1.5 border border-[#CDBDF2]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Créer une nouvelle classe</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -547,11 +718,9 @@ export const ProfDashboard: React.FC = () => {
       ───────────────────────────────────────────────────────────────────── */}
       <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
         {[
-          { id: 'aujourdhui', label: "Aujourd'hui", icon: Calendar, badge: seancesDuJour.length },
-          { id: 'seances', label: 'Séances & Appel', icon: Clock, badge: seances.length },
-          { id: 'devoirs', label: 'Devoirs donnés', icon: BookCheck, badge: devoirs.length },
-          { id: 'eleves', label: 'Mes Élèves', icon: Users, badge: mesEleves.length },
-          { id: 'groupes', label: 'Mes Groupes', icon: Layers, badge: mesGroupes.length },
+          { id: 'devoirs', label: 'Devoirs', icon: BookCheck, badge: filteredDevoirs.length },
+          { id: 'inscriptions', label: 'Élèves & comptes', icon: Users, badge: tousLesEleves.length },
+          { id: 'groupes', label: 'Groupes & Zoom', icon: Layers, badge: tousLesGroupes.length },
           { id: 'annonces', label: 'Annonces', icon: Megaphone, badge: annonces.length },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -579,395 +748,6 @@ export const ProfDashboard: React.FC = () => {
       </nav>
 
       {/* ─────────────────────────────────────────────────────────────────────
-          1. ONGLET : AUJOURD'HUI & APPEL EN 1 CLIC
-      ───────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'aujourdhui' && (
-        <div className="space-y-6">
-          {seancesDuJour.length === 0 ? (
-            <div className="cloud-card p-8 text-center space-y-4">
-              <Calendar className="w-12 h-12 text-[#1B2A7A] mx-auto opacity-50" />
-              <h3 className="text-xl font-black text-[#1B2A7A]">Aucune séance prévue aujourd'hui</h3>
-              <p className="text-sm text-[#4A5487] font-semibold">
-                Vous n'avez pas de séance enregistrée à la date d'aujourd'hui ({todayDate}).
-              </p>
-              {mesGroupes.length > 0 && (
-                <button
-                  onClick={() => {
-                    setSeanceGroupeId(mesGroupes[0].id);
-                    setSeanceDate(todayDate);
-                    setIsAddSeanceModalOpen(true);
-                  }}
-                  className="btn-pill-sun text-xs font-black"
-                >
-                  <Plus className="w-4 h-4 mr-1 inline" />
-                  Programmer une séance pour aujourd'hui
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {seancesDuJour.map((seance) => {
-                const grp = mesGroupes.find((g) => g.id === seance.groupe_id);
-                const elevesGroupe = mesEleves.filter((e) => e.groupe_id === seance.groupe_id);
-                const isAppelOpen = selectedSeanceForAppel === seance.id;
-
-                const presencesSeance = presences.filter((p) => p.seance_id === seance.id);
-                const presentsCount = presencesSeance.filter((p) => p.statut === 'present').length;
-                const absentsCount = presencesSeance.filter((p) => p.statut === 'absent').length;
-
-                return (
-                  <div key={seance.id} className="cloud-card p-6 border-2 border-[#FFE15C] space-y-4 shadow-soft-blue">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-[#FFE15C] text-[#1B2A7A] uppercase mb-2">
-                          Séance d'aujourd'hui
-                        </div>
-                        <h3 className="text-xl font-black text-[#1B2A7A]">
-                          {grp?.nom} ({grp?.formation.toUpperCase()})
-                        </h3>
-                        <p className="text-xs text-[#4A5487] font-semibold">
-                          Horaire : <strong>{grp?.heure}</strong>
-                          {seance.theme && ` · Thème : ${seance.theme}`}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1 font-bold">
-                          Appel : <span className="text-[#1E7E44]">{presentsCount} présent(s)</span> · <span className="text-[#9B1C1C]">{absentsCount} absent(s)</span> sur {elevesGroupe.length} élèves
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        {grp?.lien_zoom && (
-                          <a
-                            href={grp.lien_zoom}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-pill-white text-xs !min-h-[40px] flex items-center gap-1.5 border border-[#CDBDF2]"
-                          >
-                            <Video className="w-4 h-4 text-[#1B2A7A]" />
-                            <span>Lancer Zoom</span>
-                            <ExternalLink className="w-3 h-3 opacity-60" />
-                          </a>
-                        )}
-
-                        <button
-                          onClick={() => setSelectedSeanceForAppel(isAppelOpen ? null : seance.id)}
-                          className="btn-pill-sun text-xs !min-h-[40px] flex items-center gap-1.5 font-black"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{isAppelOpen ? "Fermer l'appel" : "Faire l'appel"}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Zone d'appel 1 clic */}
-                    {isAppelOpen && (
-                      <div className="pt-4 border-t border-[#CDBDF2]/40 space-y-3">
-                        <h4 className="font-black text-sm text-[#1B2A7A] uppercase tracking-wide">
-                          Pointage des présences ({elevesGroupe.length} élèves) :
-                        </h4>
-
-                        {elevesGroupe.length === 0 ? (
-                          <p className="text-xs text-gray-500 italic">Aucun élève rattaché à ce groupe.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {elevesGroupe.map((eleve) => {
-                              const presence = presences.find(
-                                (p) => p.seance_id === seance.id && p.eleve_id === eleve.id
-                              );
-                              const currentStatut = presence?.statut;
-
-                              return (
-                                <div
-                                  key={eleve.id}
-                                  className="p-3 rounded-2xl bg-white border border-[#CDBDF2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                                >
-                                  <div className="font-bold text-sm text-[#1B2A7A]">
-                                    {eleve.prenom} {eleve.nom}
-                                  </div>
-
-                                  <div className="grid grid-cols-4 gap-1.5 sm:flex sm:items-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdatePresence(seance.id, eleve.id, 'present')}
-                                      className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                                        currentStatut === 'present'
-                                          ? 'bg-[#1E7E44] text-white shadow-sm ring-2 ring-emerald-300'
-                                          : 'bg-[#EAFBF1] text-[#1E7E44] hover:bg-[#D3F7E1]'
-                                      }`}
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>Présent</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdatePresence(seance.id, eleve.id, 'absent')}
-                                      className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                                        currentStatut === 'absent'
-                                          ? 'bg-[#9B1C1C] text-white shadow-sm ring-2 ring-red-300'
-                                          : 'bg-[#FDE8E8] text-[#9B1C1C] hover:bg-[#FCD1D1]'
-                                      }`}
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                      <span>Absent</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdatePresence(seance.id, eleve.id, 'retard')}
-                                      className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                                        currentStatut === 'retard'
-                                          ? 'bg-[#854D0E] text-white shadow-sm ring-2 ring-yellow-300'
-                                          : 'bg-[#FEF08A] text-[#854D0E] hover:bg-[#FDE047]'
-                                      }`}
-                                    >
-                                      <Clock className="w-3.5 h-3.5" />
-                                      <span>Retard</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdatePresence(seance.id, eleve.id, 'excuse')}
-                                      className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                                        currentStatut === 'excuse'
-                                          ? 'bg-[#3730A3] text-white shadow-sm ring-2 ring-indigo-300'
-                                          : 'bg-[#E0E7FF] text-[#3730A3] hover:bg-[#C7D2FE]'
-                                      }`}
-                                    >
-                                      <AlertCircle className="w-3.5 h-3.5" />
-                                      <span>Excusé</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
-          2. ONGLET : SÉANCES & HISTORIQUE COMPLET
-      ───────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'seances' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black text-[#1B2A7A]">Gestion des Séances</h2>
-              <p className="text-xs text-[#4A5487] font-semibold">
-                Planifiez vos cours, saisissez le thème abordé et effectuez l'appel des élèves.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {mesGroupes.length > 1 && (
-                <select
-                  value={filterGroupeId}
-                  onChange={(e) => setFilterGroupeId(e.target.value)}
-                  className="min-h-[40px] px-3 py-1.5 rounded-full border border-[#CDBDF2] bg-white text-xs font-bold text-[#1B2A7A]"
-                >
-                  <option value="all">Tous mes groupes</option>
-                  {mesGroupes.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.nom}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {mesGroupes.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSeanceGroupeId(mesGroupes[0].id);
-                    setIsAddSeanceModalOpen(true);
-                  }}
-                  className="btn-pill-sun text-xs !min-h-[40px] flex items-center gap-1.5 font-black"
-                >
-                  <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
-                  <span>+ Planifier une séance</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {filteredSeances.map((seance) => {
-              const grp = mesGroupes.find((g) => g.id === seance.groupe_id);
-              const elevesGroupe = mesEleves.filter((e) => e.groupe_id === seance.groupe_id);
-              const isAppelOpen = selectedSeanceForAppel === seance.id;
-              const isToday = seance.date === todayDate;
-
-              const presencesSeance = presences.filter((p) => p.seance_id === seance.id);
-              const presentsCount = presencesSeance.filter((p) => p.statut === 'present').length;
-              const absentsCount = presencesSeance.filter((p) => p.statut === 'absent').length;
-
-              return (
-                <div
-                  key={seance.id}
-                  className={`cloud-card p-5 border-2 transition-all space-y-3 ${
-                    isToday ? 'border-[#FFE15C] shadow-soft-blue' : 'border-white'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black uppercase text-[#1B2A7A] bg-[#FFF6E3] px-2.5 py-0.5 rounded-full border border-[#FFE15C]">
-                          {grp?.nom || 'Groupe'}
-                        </span>
-                        <span className="text-xs font-bold text-[#1B2A7A]">
-                          📅 {new Date(seance.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                        {isToday && (
-                          <span className="badge-sun text-[10px] font-extrabold uppercase px-2 py-0.5">
-                            Aujourd'hui
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-[#4A5487] font-semibold">
-                        Horaire habituel : <strong>{grp?.heure}</strong>
-                        {seance.theme ? (
-                          <span className="ml-2 text-[#1B2A7A] font-bold">
-                            · Thème : « {seance.theme} »
-                          </span>
-                        ) : (
-                          <span className="ml-2 text-gray-400 italic">· Sans thème précisé</span>
-                        )}
-                      </p>
-
-                      <p className="text-xs text-gray-500 font-bold">
-                        Appel : <span className="text-[#1E7E44]">{presentsCount} présent(s)</span> · <span className="text-[#9B1C1C]">{absentsCount} absent(s)</span> sur {elevesGroupe.length} élèves
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setSelectedSeanceForAppel(isAppelOpen ? null : seance.id)}
-                        className="btn-pill-sun text-xs !min-h-[38px] flex items-center gap-1.5 font-bold"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{isAppelOpen ? "Fermer l'appel" : "Faire l'appel"}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSeance(seance.id)}
-                        title="Supprimer la séance"
-                        className="p-2 text-gray-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Feuille d'appel dépliable */}
-                  {isAppelOpen && (
-                    <div className="pt-3 border-t border-[#CDBDF2]/40 space-y-2">
-                      <h4 className="font-black text-xs text-[#1B2A7A] uppercase tracking-wide">
-                        Feuille de présence ({elevesGroupe.length} élèves) :
-                      </h4>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {elevesGroupe.map((eleve) => {
-                          const presence = presences.find(
-                            (p) => p.seance_id === seance.id && p.eleve_id === eleve.id
-                          );
-                          const currentStatut = presence?.statut;
-
-                          return (
-                            <div
-                              key={eleve.id}
-                              className="p-2.5 rounded-xl bg-white border border-[#CDBDF2]/40 flex items-center justify-between gap-2"
-                            >
-                              <span className="font-bold text-xs text-[#1B2A7A] truncate">
-                                {eleve.prenom} {eleve.nom}
-                              </span>
-
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePresence(seance.id, eleve.id, 'present')}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
-                                    currentStatut === 'present'
-                                      ? 'bg-[#1E7E44] text-white'
-                                      : 'bg-[#EAFBF1] text-[#1E7E44]'
-                                  }`}
-                                >
-                                  Présent
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePresence(seance.id, eleve.id, 'absent')}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
-                                    currentStatut === 'absent'
-                                      ? 'bg-[#9B1C1C] text-white'
-                                      : 'bg-[#FDE8E8] text-[#9B1C1C]'
-                                  }`}
-                                >
-                                  Absent
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePresence(seance.id, eleve.id, 'retard')}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
-                                    currentStatut === 'retard'
-                                      ? 'bg-[#854D0E] text-white'
-                                      : 'bg-[#FEF08A] text-[#854D0E]'
-                                  }`}
-                                >
-                                  Retard
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePresence(seance.id, eleve.id, 'excuse')}
-                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
-                                    currentStatut === 'excuse'
-                                      ? 'bg-[#3730A3] text-white'
-                                      : 'bg-[#E0E7FF] text-[#3730A3]'
-                                  }`}
-                                >
-                                  Excusé
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {filteredSeances.length === 0 && (
-              <div className="cloud-card p-10 text-center text-gray-500 space-y-3">
-                <Clock className="w-10 h-10 text-gray-300 mx-auto" />
-                <p className="text-sm font-bold">Aucune séance enregistrée pour le moment.</p>
-                {mesGroupes.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setSeanceGroupeId(mesGroupes[0].id);
-                      setIsAddSeanceModalOpen(true);
-                    }}
-                    className="btn-pill-sun text-xs font-black"
-                  >
-                    + Créer votre première séance
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
           3. ONGLET : DEVOIRS DONNÉS & NOUVEAUX DEVOIRS
       ───────────────────────────────────────────────────────────────────── */}
       {activeTab === 'devoirs' && (
@@ -981,26 +761,26 @@ export const ProfDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              {mesGroupes.length > 1 && (
+              {tousLesGroupes.length > 1 && (
                 <select
                   value={filterGroupeId}
                   onChange={(e) => setFilterGroupeId(e.target.value)}
                   className="min-h-[40px] px-3 py-1.5 rounded-full border border-[#CDBDF2] bg-white text-xs font-bold text-[#1B2A7A]"
                 >
-                  <option value="all">Tous mes groupes</option>
-                  {mesGroupes.map((g) => (
+                  <option value="all">Toutes mes classes</option>
+                  {tousLesGroupes.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.nom}
+                      {g.nom} {g.prof_id === profile?.id ? '(Ma classe)' : ''}
                     </option>
                   ))}
                 </select>
               )}
 
-              {mesGroupes.length > 0 && (
+              {tousLesGroupes.length > 0 && (
                 <button
                   type="button"
                   onClick={() => {
-                    setDevoirGroupeId(mesGroupes[0].id);
+                    setDevoirGroupeId(mesGroupes[0]?.id || tousLesGroupes[0]?.id);
                     setIsAddDevoirModalOpen(true);
                   }}
                   className="btn-pill-sun text-xs !min-h-[40px] flex items-center gap-1.5 font-black"
@@ -1014,10 +794,10 @@ export const ProfDashboard: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredDevoirs.map((devoir) => {
-              const grp = mesGroupes.find((g) => g.id === devoir.groupe_id);
+              const grp = tousLesGroupes.find((g) => g.id === devoir.groupe_id);
               const isPast = devoir.date_limite ? devoir.date_limite < todayDate : false;
               const rendusDuDevoir = rendus.filter((r) => r.devoir_id === devoir.id);
-              const elevesDuGroupe = mesEleves.filter((e) => e.groupe_id === devoir.groupe_id);
+              const elevesDuGroupe = tousLesEleves.filter((e) => e.groupe_id === devoir.groupe_id);
               const isRendusOpen = selectedDevoirForRendus === devoir.id;
 
               return (
@@ -1027,21 +807,34 @@ export const ProfDashboard: React.FC = () => {
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-black uppercase text-[#1B2A7A] bg-[#FFF6E3] px-2.5 py-0.5 rounded-full border border-[#FFE15C]">
-                        {grp?.nom || 'Groupe'}
-                      </span>
-
-                      {devoir.date_limite && (
-                        <span
-                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                            isPast
-                              ? 'bg-gray-100 text-gray-500'
-                              : 'bg-[#EAFBF1] text-[#1E7E44] border border-[#1E7E44]/20'
-                          }`}
-                        >
-                          {isPast ? 'Terminé' : `Pour le ${new Date(devoir.date_limite).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-black uppercase text-[#1B2A7A] bg-[#FFF6E3] px-2.5 py-0.5 rounded-full border border-[#FFE15C]">
+                          {devoir.groupe?.nom || grp?.nom || 'Groupe'}
                         </span>
-                      )}
+
+                        {devoir.date_limite && (
+                          <span
+                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                              isPast
+                                ? 'bg-gray-100 text-gray-500'
+                                : 'bg-[#EAFBF1] text-[#1E7E44] border border-[#1E7E44]/20'
+                            }`}
+                          >
+                            {isPast ? 'Terminé' : `Pour le ${new Date(devoir.date_limite).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Bouton de suppression bien visible */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDevoir(devoir.id)}
+                        title="Supprimer ce devoir"
+                        className="px-2.5 py-1 rounded-xl text-red-600 hover:text-white hover:bg-red-600 border border-red-200 transition-all flex items-center gap-1.5 text-xs font-bold shadow-2xs"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Supprimer</span>
+                      </button>
                     </div>
 
                     <h3 className="text-base font-black text-[#1B2A7A] leading-snug">
@@ -1218,18 +1011,18 @@ export const ProfDashboard: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-[#CDBDF2]/40 flex items-center justify-between text-[11px] text-gray-400">
+                  <div className="pt-2 border-t border-[#CDBDF2]/40 flex items-center justify-between text-[11px] text-gray-500">
                     <span>
-                      Donné le {new Date(devoir.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      Donné le {new Date(devoir.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteDevoir(devoir.id)}
-                      className="text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1 font-bold"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Supprimer</span>
+                      <span>Supprimer le devoir</span>
                     </button>
                   </div>
                 </div>
@@ -1241,12 +1034,12 @@ export const ProfDashboard: React.FC = () => {
                 <BookCheck className="w-12 h-12 text-gray-300 mx-auto" />
                 <p className="text-base font-bold text-[#1B2A7A]">Aucun devoir n'a été donné pour le moment.</p>
                 <p className="text-xs text-[#4A5487]">
-                  Cliquez sur le bouton ci-dessous pour envoyer votre premier devoir aux élèves de votre classe.
+                  Cliquez sur le bouton ci-dessous pour envoyer votre premier devoir aux élèves.
                 </p>
-                {mesGroupes.length > 0 && (
+                {tousLesGroupes.length > 0 && (
                   <button
                     onClick={() => {
-                      setDevoirGroupeId(mesGroupes[0].id);
+                      setDevoirGroupeId(mesGroupes[0]?.id || tousLesGroupes[0]?.id);
                       setIsAddDevoirModalOpen(true);
                     }}
                     className="btn-pill-sun text-xs font-black inline-flex items-center gap-1"
@@ -1261,333 +1054,337 @@ export const ProfDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────────
-          4. ONGLET : MES ÉLÈVES & SUIVI NOURANIA
-      ───────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'eleves' && (
-        <div className="space-y-6">
-          {/* Recherche */}
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchEleve}
-              onChange={(e) => setSearchEleve(e.target.value)}
-              placeholder="Rechercher un élève par son prénom ou nom..."
-              className="w-full min-h-[46px] pl-12 pr-4 py-3 rounded-2xl bg-white border border-[#CDBDF2] text-sm text-[#1B2A7A] font-semibold focus:ring-2 focus:ring-[#FFE15C] focus:outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Liste des élèves */}
-            <div className="md:col-span-1 space-y-2">
-              {mesEleves
-                .filter(
-                  (e) =>
-                    e.prenom.toLowerCase().includes(searchEleve.toLowerCase()) ||
-                    e.nom.toLowerCase().includes(searchEleve.toLowerCase())
-                )
-                .map((eleve) => {
-                  const prog = progressions.find((p) => p.eleve_id === eleve.id);
-                  const isSelected = selectedEleveDetail?.id === eleve.id;
-
-                  return (
-                    <div
-                      key={eleve.id}
-                      onClick={() => setSelectedEleveDetail(eleve)}
-                      className={`p-4 rounded-2xl cursor-pointer transition-all border ${
-                        isSelected
-                          ? 'bg-[#1B2A7A] text-white shadow-md border-[#1B2A7A]'
-                          : 'bg-white hover:bg-[#FFF6E3] border-[#CDBDF2]/50 text-[#1B2A7A]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-black text-sm sm:text-base">
-                          {eleve.prenom} {eleve.nom}
-                        </h4>
-                        <span
-                          className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                            isSelected ? 'bg-white/20 text-white' : 'bg-[#FFE15C] text-[#1B2A7A]'
-                          }`}
-                        >
-                          Leçon {prog?.lecon_actuelle || 1}/17
-                        </span>
-                      </div>
-                      <p className={`text-xs mt-1 ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
-                        {eleve.groupe?.nom || 'Sans groupe'}
-                      </p>
-                    </div>
-                  );
-                })}
-
-              {mesEleves.length === 0 && (
-                <p className="text-xs text-gray-500 italic p-4 text-center">
-                  Aucun élève dans vos groupes.
-                </p>
-              )}
-            </div>
-
-            {/* Fiche détaillée élève & saisie progression */}
-            <div className="md:col-span-2">
-              {selectedEleveDetail ? (
-                <div className="cloud-card p-6 space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-black text-[#1B2A7A]">
-                        {selectedEleveDetail.prenom} {selectedEleveDetail.nom}
-                      </h3>
-                      <p className="text-xs text-[#4A5487] font-semibold">
-                        Groupe : <strong>{selectedEleveDetail.groupe?.nom}</strong> ({selectedEleveDetail.groupe?.formation.toUpperCase()})
-                      </p>
-                    </div>
-
-                    {selectedEleveDetail.parent?.telephone && (
-                      <a
-                        href={`https://wa.me/${selectedEleveDetail.parent.telephone.replace(/\s+/g, '').replace('+', '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-pill-white text-xs !min-h-[38px] flex items-center gap-1.5 border border-[#CDBDF2] text-[#1E7E44] font-black"
-                      >
-                        <span>WhatsApp Parent : {selectedEleveDetail.parent.telephone}</span>
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Saisie Progression Nourania */}
-                  <div className="p-5 rounded-2xl bg-white border border-[#CDBDF2]/50 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-sm text-[#1B2A7A] flex items-center gap-2">
-                        <Award className="w-5 h-5 text-[#1B2A7A]" />
-                        Progression Méthode Nourania (1 à 17)
-                      </h4>
-                      {progSaveSuccess && (
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" /> Enregistré !
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-[#1B2A7A]">
-                        Leçon actuellement travaillée :
-                      </label>
-                      <select
-                        value={editProgLecon}
-                        onChange={(e) => setEditProgLecon(parseInt(e.target.value, 10))}
-                        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-[#CDBDF2] bg-white text-sm font-bold text-[#1B2A7A]"
-                      >
-                        {[
-                          { num: 1, title: 'Leçon 1 : Les lettres isolées' },
-                          { num: 2, title: 'Leçon 2 : Les lettres composées' },
-                          { num: 3, title: 'Leçon 3 : Les lettres coupées' },
-                          { num: 4, title: 'Leçon 4 : Les voyelles courtes (Harakat)' },
-                          { num: 5, title: 'Leçon 5 : Le Tanween' },
-                          { num: 6, title: 'Leçon 6 : Exercices sur les Harakat et Tanween' },
-                          { num: 7, title: 'Leçon 7 : Les voyelles longues mineures' },
-                          { num: 8, title: 'Leçon 8 : Les lettres de prolongation (Madd) et de douceur (Leen)' },
-                          { num: 9, title: 'Leçon 9 : Exercices sur le Madd et Leen' },
-                          { num: 10, title: 'Leçon 10 : Le Soukoun' },
-                          { num: 11, title: 'Leçon 11 : Exercices sur le Soukoun' },
-                          { num: 12, title: 'Leçon 12 : La Chaddah' },
-                          { num: 13, title: 'Leçon 13 : Exercices sur la Chaddah' },
-                          { num: 14, title: 'Leçon 14 : La Chaddah avec le Soukoun' },
-                          { num: 15, title: 'Leçon 15 : La Chaddah avec la Chaddah' },
-                          { num: 16, title: 'Leçon 16 : La Chaddah avec les lettres de Madd' },
-                          { num: 17, title: 'Leçon 17 : Révision générale et fin Nourania' },
-                        ].map((lec) => (
-                          <option key={lec.num} value={lec.num}>
-                            {lec.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-[#1B2A7A]">
-                        Votre commentaire pour la famille et l'élève :
-                      </label>
-                      <textarea
-                        value={editProgCommentaire}
-                        onChange={(e) => setEditProgCommentaire(e.target.value)}
-                        rows={3}
-                        placeholder="Ex: Excellente prononciation de la lettre Ra aujourd'hui. Bien réviser la page 8..."
-                        className="w-full p-3 rounded-xl border border-[#CDBDF2] text-xs sm:text-sm text-[#1B2A7A] focus:outline-none focus:ring-2 focus:ring-[#FFE15C]"
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleSaveProgression}
-                      className="btn-pill-sun text-xs font-black !min-h-[40px] w-full"
-                    >
-                      Enregistrer la progression de {selectedEleveDetail.prenom}
-                    </button>
-                  </div>
-
-                  {/* Ajouter une appréciation mensuelle */}
-                  <form onSubmit={handleAddAppreciation} className="p-5 rounded-2xl bg-white border border-[#CDBDF2]/50 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-black text-sm text-[#1B2A7A] flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-[#1B2A7A]" />
-                        Ajouter une appréciation mensuelle
-                      </h4>
-                      {apprecSaveSuccess && (
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" /> Ajouté !
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Période</label>
-                        <input
-                          type="month"
-                          value={newApprecPeriode}
-                          onChange={(e) => setNewApprecPeriode(e.target.value)}
-                          className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
-                          required
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Appréciation</label>
-                        <textarea
-                          value={newApprecTexte}
-                          onChange={(e) => setNewApprecTexte(e.target.value)}
-                          rows={2}
-                          placeholder="Bilan du mois pour la famille (efforts, assiduité, conseils)..."
-                          className="w-full p-2.5 rounded-xl border border-[#CDBDF2] text-xs text-[#1B2A7A]"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn-pill-white text-xs font-bold !min-h-[38px] border border-[#CDBDF2] hover:bg-[#FFE15C]"
-                    >
-                      Publier l'appréciation
-                    </button>
-
-                    {/* Historique appréciations */}
-                    <div className="space-y-2 pt-2 border-t border-gray-100">
-                      <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
-                        Historique des appréciations de {selectedEleveDetail.prenom} :
-                      </h5>
-                      {appreciations
-                        .filter((a) => a.eleve_id === selectedEleveDetail.id)
-                        .map((app) => (
-                          <div key={app.id} className="p-3 rounded-xl bg-gray-50 text-xs text-gray-700">
-                            <span className="font-black text-[#1B2A7A] mr-2">[{app.periode}]</span>
-                            {app.texte}
-                          </div>
-                        ))}
-                    </div>
-                  </form>
-                </div>
-              ) : (
-                <div className="cloud-card p-12 text-center text-gray-500 space-y-2">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto" />
-                  <p className="text-sm font-bold text-[#1B2A7A]">Sélectionnez un élève dans la liste à gauche</p>
-                  <p className="text-xs text-[#4A5487]">
-                    Vous pourrez mettre à jour sa leçon Nourania (1 à 17) et lui rédiger une appréciation.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Élèves & comptes : inscriptions, comptes parents / élèves, mots de passe */}
+      {activeTab === 'inscriptions' && <InscriptionsPanel />}
 
       {/* ─────────────────────────────────────────────────────────────────────
-          5. ONGLET : MES GROUPES & SALLES ZOOM
+          5. ONGLET : GESTION DES GROUPES & ATTRIBUTION AUTONOME
       ───────────────────────────────────────────────────────────────────── */}
       {activeTab === 'groupes' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {mesGroupes.map((grp) => {
-              const elevesDuGroupe = mesEleves.filter((e) => e.groupe_id === grp.id);
+          {/* Header de l'onglet avec filtres et bouton Créer */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-[#1B2A7A] flex items-center gap-2">
+                <Layers className="w-6 h-6 text-[#1B2A7A]" />
+                Gestion & Attribution des Groupes
+              </h2>
+              <p className="text-xs text-[#4A5487] font-semibold">
+                Prenez en charge une classe en 1 clic, créez de nouveaux créneaux ou gérez les paramètres Zoom.
+              </p>
+            </div>
 
+            <button
+              type="button"
+              onClick={handleOpenCreateGroupeModal}
+              className="btn-pill-sun text-xs !min-h-[42px] px-4 flex items-center gap-2 font-black shadow-sun-glow"
+            >
+              <Plus className="w-4 h-4 text-[#1B2A7A]" strokeWidth={2.5} />
+              <span>+ Créer un nouveau groupe</span>
+            </button>
+          </div>
+
+          {/* Filtres de sous-onglets : Mes groupes, Tous les groupes, À pourvoir */}
+          <div className="flex items-center gap-2 border-b border-[#CDBDF2]/40 pb-3 overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setGroupesViewFilter('mes_groupes')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all ${
+                groupesViewFilter === 'mes_groupes'
+                  ? 'bg-[#1B2A7A] text-white shadow-xs'
+                  : 'bg-white text-[#4A5487] hover:bg-gray-100 border border-[#CDBDF2]/40'
+              }`}
+            >
+              Mes classes en charge ({mesGroupes.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupesViewFilter('tous')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all ${
+                groupesViewFilter === 'tous'
+                  ? 'bg-[#1B2A7A] text-white shadow-xs'
+                  : 'bg-white text-[#4A5487] hover:bg-gray-100 border border-[#CDBDF2]/40'
+              }`}
+            >
+              Toutes les classes ({tousLesGroupes.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupesViewFilter('a_pourvoir')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all ${
+                groupesViewFilter === 'a_pourvoir'
+                  ? 'bg-[#1B2A7A] text-white shadow-xs'
+                  : 'bg-white text-[#4A5487] hover:bg-gray-100 border border-[#CDBDF2]/40'
+              }`}
+            >
+              Classes disponibles / à pourvoir ({groupesSansProf.length})
+            </button>
+          </div>
+
+          {/* Grille des cartes de groupes */}
+          {(() => {
+            const displayedGroupes =
+              groupesViewFilter === 'mes_groupes'
+                ? mesGroupes
+                : groupesViewFilter === 'a_pourvoir'
+                ? groupesSansProf
+                : tousLesGroupes;
+
+            if (displayedGroupes.length === 0) {
               return (
-                <div key={grp.id} className="cloud-card p-6 space-y-4 shadow-soft-blue">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-black uppercase text-[#1B2A7A] bg-[#FFE15C] px-3 py-1 rounded-full">
-                        {grp.formation}
-                      </span>
-                      <h3 className="text-xl font-black text-[#1B2A7A] mt-2">{grp.nom}</h3>
-                      <p className="text-xs text-[#4A5487] font-semibold">
-                        {grp.jour} · <strong>{grp.heure}</strong>
-                      </p>
-                    </div>
-
-                    {grp.lien_zoom && (
-                      <a
-                        href={grp.lien_zoom}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-pill-sun text-xs !min-h-[40px] flex items-center gap-1.5 font-black"
+                <div className="cloud-card p-12 text-center text-gray-500 space-y-3">
+                  <Layers className="w-12 h-12 text-gray-300 mx-auto" />
+                  <p className="text-base font-bold text-[#1B2A7A]">
+                    {groupesViewFilter === 'mes_groupes'
+                      ? "Vous n'avez pas encore de classe en charge."
+                      : groupesViewFilter === 'a_pourvoir'
+                      ? "Toutes les classes ont actuellement un enseignant assigné."
+                      : "Aucun groupe n'a été créé pour le moment."}
+                  </p>
+                  <p className="text-xs text-[#4A5487]">
+                    {groupesViewFilter === 'mes_groupes'
+                      ? "Vous pouvez vous attribuer une classe existante parmi les groupes disponibles ou créer votre propre groupe."
+                      : "Cliquez ci-dessous pour créer une nouvelle classe."}
+                  </p>
+                  <div className="pt-2 flex flex-wrap justify-center gap-2">
+                    {groupesViewFilter === 'mes_groupes' && tousLesGroupes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setGroupesViewFilter('tous')}
+                        className="btn-pill-sun text-xs font-black px-4 py-2"
                       >
-                        <Video className="w-4 h-4" />
-                        <span>Lancer Zoom</span>
-                      </a>
+                        Voir tous les groupes ({tousLesGroupes.length})
+                      </button>
                     )}
-                  </div>
-
-                  <div className="pt-2 border-t border-[#CDBDF2]/40 flex flex-wrap gap-2">
                     <button
-                      onClick={() => {
-                        setSeanceGroupeId(grp.id);
-                        setIsAddSeanceModalOpen(true);
-                      }}
-                      className="btn-pill-white text-xs !min-h-[36px] flex items-center gap-1 border border-[#CDBDF2] font-bold"
+                      type="button"
+                      onClick={handleOpenCreateGroupeModal}
+                      className="btn-pill-white text-xs font-black px-4 py-2 border border-[#CDBDF2]"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Ajouter une séance</span>
+                      <Plus className="w-3.5 h-3.5 mr-1 inline" />
+                      Créer un groupe
                     </button>
-
-                    <button
-                      onClick={() => {
-                        setDevoirGroupeId(grp.id);
-                        setIsAddDevoirModalOpen(true);
-                      }}
-                      className="btn-pill-white text-xs !min-h-[36px] flex items-center gap-1 border border-[#CDBDF2] font-bold"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Donner un devoir</span>
-                    </button>
-                  </div>
-
-                  {/* Élèves inscrits */}
-                  <div className="pt-2">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">
-                      Élèves inscrits ({elevesDuGroupe.length}) :
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {elevesDuGroupe.map((el) => (
-                        <span
-                          key={el.id}
-                          className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-white border border-[#CDBDF2] text-[#1B2A7A]"
-                        >
-                          {el.prenom} {el.nom}
-                        </span>
-                      ))}
-                      {elevesDuGroupe.length === 0 && (
-                        <span className="text-xs text-gray-400 italic">Aucun élève pour le moment</span>
-                      )}
-                    </div>
                   </div>
                 </div>
               );
-            })}
-          </div>
+            }
 
-          {mesGroupes.length === 0 && (
-            <div className="cloud-card p-12 text-center text-gray-500">
-              <Layers className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-base font-bold text-[#1B2A7A]">Aucun groupe ne vous a encore été attribué.</p>
-              <p className="text-xs text-[#4A5487] mt-1">L'administratrice Siham vous assignera vos groupes d'enseignement.</p>
-            </div>
-          )}
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {displayedGroupes.map((grp) => {
+                  const elevesDuGroupe = tousLesEleves.filter((e) => e.groupe_id === grp.id);
+                  const devoirsDuGroupe = devoirs.filter((d) => d.groupe_id === grp.id);
+                  const isMyGroup = grp.prof_id === profile?.id;
+                  const assignedProf = profsProfiles.find((p) => p.id === grp.prof_id);
+
+                  return (
+                    <div
+                      key={grp.id}
+                      className={`cloud-card p-6 space-y-4 transition-all ${
+                        isMyGroup ? 'border-2 border-[#FFE15C] shadow-soft-blue' : 'border border-[#CDBDF2]/50'
+                      }`}
+                    >
+                      {/* En-tête de la carte */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-[11px] font-black uppercase text-[#1B2A7A] bg-[#FFE15C] px-2.5 py-0.5 rounded-full">
+                              {grp.formation.toUpperCase()}
+                            </span>
+                            <span className="text-[11px] font-bold text-[#4A5487] bg-white border border-[#CDBDF2]/60 px-2 py-0.5 rounded-full">
+                              {elevesDuGroupe.length} élève(s)
+                            </span>
+                          </div>
+                          <h3 className="text-xl font-black text-[#1B2A7A] mt-1">{grp.nom}</h3>
+                          <p className="text-xs text-[#4A5487] font-semibold">
+                            📅 {grp.jour} · <strong>{grp.heure}</strong>
+                          </p>
+                        </div>
+
+                        {/* Actions Rapides Modifier / Supprimer */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditGroupeModal(grp)}
+                            title="Modifier ce groupe"
+                            className="p-2 text-gray-400 hover:text-[#1B2A7A] hover:bg-white rounded-xl transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGroupe(grp.id)}
+                            title="Supprimer définitivement ce groupe"
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* STATUT D'ATTRIBUTION DU GROUPE (AUTONOMIE ENSEIGNANTE) */}
+                      <div className="pt-1">
+                        {isMyGroup ? (
+                          <div className="p-3 rounded-2xl bg-[#EAFBF1] border border-[#1E7E44]/30 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-xs font-black text-[#1E7E44]">
+                              <UserCheck className="w-4 h-4" />
+                              <span>✨ Votre classe (assignée à vous)</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleUnassignGroup(grp.id)}
+                              className="text-[11px] font-bold text-red-600 hover:text-red-800 hover:underline"
+                            >
+                              Me désassigner
+                            </button>
+                          </div>
+                        ) : !grp.prof_id ? (
+                          <div className="p-3 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <span className="text-xs font-black text-[#854D0E] block">⚠️ Classe disponible (sans enseignant)</span>
+                              <span className="text-[11px] text-[#854D0E]/80">Aucun professeur n'est encore assigné à ce groupe.</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAssignGroup(grp.id)}
+                              className="btn-pill-sun text-xs font-black !min-h-[36px] px-3.5 flex items-center gap-1.5 flex-shrink-0"
+                            >
+                              <UserPlus className="w-4 h-4" />
+                              <span>M'assigner ce groupe</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="text-xs text-gray-600 font-semibold">
+                              👩‍🏫 Enseignante : <strong>{assignedProf ? `${assignedProf.prenom} ${assignedProf.nom}` : 'Autre collègue'}</strong>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAssignGroup(grp.id)}
+                              className="btn-pill-white text-xs font-bold !min-h-[34px] px-3 border border-[#CDBDF2] flex-shrink-0"
+                            >
+                              <span>Prendre en charge</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Salle Zoom */}
+                      <div className="pt-1">
+                        {grp.lien_zoom ? (
+                          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs">
+                            <div className="flex items-center gap-1.5 text-[#1B2A7A] truncate font-bold">
+                              <Video className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                              <span className="truncate">{grp.lien_zoom}</span>
+                            </div>
+                            <a
+                              href={grp.lien_zoom}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-pill-sun text-[11px] font-black !min-h-[32px] px-2.5 flex items-center gap-1 flex-shrink-0"
+                            >
+                              <span>Tester Zoom</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-xs text-gray-400 italic p-2 bg-gray-50 rounded-xl">
+                            <span>Pas de lien Zoom configuré</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditGroupeModal(grp)}
+                              className="text-[11px] text-[#1B2A7A] font-bold hover:underline"
+                            >
+                              + Ajouter
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions rapides sur le groupe */}
+                      <div className="pt-2 border-t border-[#CDBDF2]/40 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSeanceGroupeId(grp.id);
+                            setIsAddSeanceModalOpen(true);
+                          }}
+                          className="btn-pill-white text-xs !min-h-[36px] flex items-center gap-1 border border-[#CDBDF2] font-bold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Séance</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDevoirGroupeId(grp.id);
+                            setIsAddDevoirModalOpen(true);
+                          }}
+                          className="btn-pill-white text-xs !min-h-[36px] flex items-center gap-1 border border-[#CDBDF2] font-bold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Donner un devoir</span>
+                        </button>
+                      </div>
+
+                      {/* Devoirs actifs du groupe avec suppression 1 clic */}
+                      {devoirsDuGroupe.length > 0 && (
+                        <div className="pt-2 border-t border-[#CDBDF2]/30 space-y-1.5">
+                          <span className="text-[10px] font-black text-[#4A5487] uppercase tracking-wide block">
+                            Devoirs en cours ({devoirsDuGroupe.length}) :
+                          </span>
+                          <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                            {devoirsDuGroupe.map((dev) => (
+                              <div
+                                key={dev.id}
+                                className="p-2 rounded-xl bg-white border border-[#CDBDF2]/60 flex items-center justify-between gap-2 shadow-2xs"
+                              >
+                                <div className="truncate">
+                                  <span className="font-bold text-xs text-[#1B2A7A] block truncate">• {dev.titre}</span>
+                                  {dev.date_limite && (
+                                    <span className="text-[10px] text-gray-500">Pour le {new Date(dev.date_limite).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDevoir(dev.id)}
+                                  title="Supprimer ce devoir"
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Élèves inscrits */}
+                      <div className="pt-2 border-t border-[#CDBDF2]/30">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-wide mb-2">
+                          Élèves inscrits ({elevesDuGroupe.length}) :
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {elevesDuGroupe.map((el) => (
+                            <span
+                              key={el.id}
+                              className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-white border border-[#CDBDF2] text-[#1B2A7A]"
+                            >
+                              {el.prenom} {el.nom}
+                            </span>
+                          ))}
+                          {elevesDuGroupe.length === 0 && (
+                            <span className="text-xs text-gray-400 italic">Aucun élève inscrit pour le moment</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1647,80 +1444,6 @@ export const ProfDashboard: React.FC = () => {
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────
-          MODAL : CRÉER UNE SÉANCE
-      ───────────────────────────────────────────────────────────────────── */}
-      {isAddSeanceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="cloud-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-[#1B2A7A] shadow-soft-blue">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black text-[#1B2A7A]">Planifier une séance</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddSeanceModalOpen(false)}
-                className="text-xs font-bold text-gray-400 hover:text-gray-700"
-              >
-                ✕ Fermer
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSeance} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Groupe concerné *</label>
-                <select
-                  value={seanceGroupeId}
-                  onChange={(e) => setSeanceGroupeId(e.target.value)}
-                  className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
-                  required
-                >
-                  {mesGroupes.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.nom} ({g.jour} · {g.heure})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Date de la séance *</label>
-                <input
-                  type="date"
-                  value={seanceDate}
-                  onChange={(e) => setSeanceDate(e.target.value)}
-                  className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
-                  required
-                >
-                </input>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Thème abordé / Leçon (optionnel)</label>
-                <input
-                  type="text"
-                  value={seanceTheme}
-                  onChange={(e) => setSeanceTheme(e.target.value)}
-                  placeholder="Ex: Méthode Nourania Leçon 4 - Les Harakat"
-                  className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs text-[#1B2A7A]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddSeanceModalOpen(false)}
-                  className="btn-pill-white text-xs !min-h-[40px]"
-                >
-                  Annuler
-                </button>
-                <button type="submit" className="btn-pill-sun text-xs !min-h-[40px] font-black">
-                  Créer la séance
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────
           MODAL : AJOUTER UN DEVOIR
       ───────────────────────────────────────────────────────────────────── */}
       {isAddDevoirModalOpen && (
@@ -1749,7 +1472,7 @@ export const ProfDashboard: React.FC = () => {
                   className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
                   required
                 >
-                  {mesGroupes.map((g) => (
+                  {(mesGroupes.length > 0 ? mesGroupes : tousLesGroupes).map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.nom} ({g.jour} · {g.heure})
                     </option>
@@ -1848,7 +1571,7 @@ export const ProfDashboard: React.FC = () => {
                   className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
                   required
                 >
-                  {mesGroupes.map((g) => (
+                  {(mesGroupes.length > 0 ? mesGroupes : tousLesGroupes).map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.nom}
                     </option>
@@ -1891,6 +1614,129 @@ export const ProfDashboard: React.FC = () => {
                 <button type="submit" className="btn-pill-sun text-xs !min-h-[40px] font-black flex items-center gap-1.5">
                   <Send className="w-4 h-4" />
                   <span>Publier</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────
+          MODAL : CRÉER / MODIFIER UN GROUPE (AUTONOMIE ENSEIGNANTE)
+      ───────────────────────────────────────────────────────────────────── */}
+      {isGroupeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="cloud-card max-w-lg w-full p-6 space-y-4 bg-white border-2 border-[#1B2A7A] shadow-soft-blue">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[#1B2A7A]" />
+                <h3 className="text-lg font-black text-[#1B2A7A]">
+                  {editingGroupeId ? 'Modifier la classe' : 'Créer une nouvelle classe'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGroupeModalOpen(false)}
+                className="text-xs font-bold text-gray-400 hover:text-gray-700"
+              >
+                ✕ Fermer
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGroupe} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Nom du groupe / classe *</label>
+                <input
+                  type="text"
+                  value={groupeNom}
+                  onChange={(e) => setGroupeNom(e.target.value)}
+                  placeholder="Ex : Nourania Débutants - Mercredi A"
+                  className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Formation *</label>
+                  <select
+                    value={groupeFormation}
+                    onChange={(e) => setGroupeFormation(e.target.value as any)}
+                    className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
+                  >
+                    <option value="nourania">Méthode Nourania</option>
+                    <option value="litteraire">Arabe Littéraire</option>
+                    <option value="eveil">Éveil 3-5 ans</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Jour du cours *</label>
+                  <select
+                    value={groupeJour}
+                    onChange={(e) => setGroupeJour(e.target.value)}
+                    className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
+                  >
+                    <option value="Lundi">Lundi</option>
+                    <option value="Mardi">Mardi</option>
+                    <option value="Mercredi">Mercredi</option>
+                    <option value="Jeudi">Jeudi</option>
+                    <option value="Vendredi">Vendredi</option>
+                    <option value="Samedi">Samedi</option>
+                    <option value="Dimanche">Dimanche</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Créneau horaire *</label>
+                <input
+                  type="text"
+                  value={groupeHeure}
+                  onChange={(e) => setGroupeHeure(e.target.value)}
+                  placeholder="Ex : 14:00 - 15:30 ou 18:00 - 19:00"
+                  className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs font-bold text-[#1B2A7A]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Lien de la salle Zoom (optionnel)</label>
+                <input
+                  type="url"
+                  value={groupeLienZoom}
+                  onChange={(e) => setGroupeLienZoom(e.target.value)}
+                  placeholder="https://zoom.us/j/..."
+                  className="w-full min-h-[44px] p-2.5 rounded-xl border border-[#CDBDF2] text-xs text-[#1B2A7A]"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#FFF6E3] border border-[#FFE15C] flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  id="profAutoAssignCheckbox"
+                  checked={groupeAutoAssign}
+                  onChange={(e) => setGroupeAutoAssign(e.target.checked)}
+                  className="w-4 h-4 text-[#1B2A7A] rounded border-gray-300"
+                />
+                <label htmlFor="profAutoAssignCheckbox" className="text-xs font-bold text-[#1B2A7A] cursor-pointer">
+                  M'assigner cette classe en tant qu'enseignante responsable
+                </label>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsGroupeModalOpen(false)}
+                  className="btn-pill-white text-xs !min-h-[40px] px-4 font-bold border border-gray-200"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn-pill-sun text-xs !min-h-[40px] px-5 font-black"
+                >
+                  {editingGroupeId ? 'Mettre à jour la classe' : 'Créer la classe'}
                 </button>
               </div>
             </form>

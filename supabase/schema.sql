@@ -307,14 +307,19 @@ create policy "Mise a jour de son profil sans changer son role"
     and role = (select p.role from public.profiles p where p.id = auth.uid())
   );
 
+create policy "Prof lit tous les profiles"
+  on public.profiles
+  for select
+  using (public.is_prof());
+
 -- ------------------------------------------------------------------------------
 -- POLICIES : ELEVES
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur eleves"
+create policy "Admin et Prof total sur eleves"
   on public.eleves
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit ses enfants"
   on public.eleves
@@ -326,24 +331,14 @@ create policy "Eleve adulte lit sa fiche"
   for select
   using (compte_id = auth.uid());
 
-create policy "Prof lit ses eleves"
-  on public.eleves
-  for select
-  using (public.is_prof_of_eleve(id));
-
 -- ------------------------------------------------------------------------------
--- POLICIES : GROUPES
+-- POLICIES : GROUPES (Attribution autonome, création et gestion par Prof & Admin)
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur groupes"
+create policy "Admin et Prof total sur groupes"
   on public.groupes
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof lit ses groupes"
-  on public.groupes
-  for select
-  using (prof_id = auth.uid());
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit les groupes de ses enfants"
   on public.groupes
@@ -368,17 +363,11 @@ create policy "Eleve adulte lit son groupe"
 -- ------------------------------------------------------------------------------
 -- POLICIES : SEANCES
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur seances"
+create policy "Admin et Prof total sur seances"
   on public.seances
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof gere ses seances"
-  on public.seances
-  for all
-  using (public.is_prof_of_groupe(groupe_id))
-  with check (public.is_prof_of_groupe(groupe_id));
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit les seances de ses enfants"
   on public.seances
@@ -403,27 +392,11 @@ create policy "Eleve adulte lit les seances de son groupe"
 -- ------------------------------------------------------------------------------
 -- POLICIES : PRESENCES
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur presences"
+create policy "Admin et Prof total sur presences"
   on public.presences
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof gere ses presences"
-  on public.presences
-  for all
-  using (
-    exists (
-      select 1 from public.seances s
-      where s.id = presences.seance_id and public.is_prof_of_groupe(s.groupe_id)
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.seances s
-      where s.id = presences.seance_id and public.is_prof_of_groupe(s.groupe_id)
-    )
-  );
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit les presences de ses enfants"
   on public.presences
@@ -438,17 +411,11 @@ create policy "Eleve adulte lit ses presences"
 -- ------------------------------------------------------------------------------
 -- POLICIES : PROGRESSIONS
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur progressions"
+create policy "Admin et Prof total sur progressions"
   on public.progressions
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof gere ses progressions"
-  on public.progressions
-  for all
-  using (public.is_prof_of_eleve(eleve_id))
-  with check (public.is_prof_of_eleve(eleve_id));
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit la progression de ses enfants"
   on public.progressions
@@ -461,19 +428,13 @@ create policy "Eleve adulte lit sa progression"
   using (public.is_eleve_self(eleve_id));
 
 -- ------------------------------------------------------------------------------
--- POLICIES : DEVOIRS
+-- POLICIES : DEVOIRS (Suppression et gestion totale par Prof & Admin)
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur devoirs"
+create policy "Admin et Prof total sur devoirs"
   on public.devoirs
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof gere ses devoirs"
-  on public.devoirs
-  for all
-  using (public.is_prof_of_groupe(groupe_id))
-  with check (public.is_prof_of_groupe(groupe_id));
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit les devoirs du groupe de ses enfants"
   on public.devoirs
@@ -500,17 +461,11 @@ create policy "Eleve adulte lit les devoirs de son groupe"
 -- ------------------------------------------------------------------------------
 alter table public.devoir_rendus enable row level security;
 
-create policy "Admin total sur devoir_rendus"
+create policy "Admin et Prof total sur devoir_rendus"
   on public.devoir_rendus
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof gere les rendus de ses eleves"
-  on public.devoir_rendus
-  for all
-  using (public.is_prof_of_eleve(eleve_id))
-  with check (public.is_prof_of_eleve(eleve_id));
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent gere les rendus de ses enfants"
   on public.devoir_rendus
@@ -527,17 +482,11 @@ create policy "Eleve adulte gere ses rendus"
 -- ------------------------------------------------------------------------------
 -- POLICIES : APPRECIATIONS
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur appreciations"
+create policy "Admin et Prof total sur appreciations"
   on public.appreciations
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof gere ses appreciations"
-  on public.appreciations
-  for all
-  using (public.is_prof_of_eleve(eleve_id))
-  with check (public.is_prof_of_eleve(eleve_id));
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit les appreciations de ses enfants"
   on public.appreciations
@@ -571,40 +520,11 @@ create policy "Eleve adulte lit ses cotisations"
 -- ------------------------------------------------------------------------------
 -- POLICIES : ANNONCES
 -- ------------------------------------------------------------------------------
-create policy "Admin total sur annonces"
+create policy "Admin et Prof total sur annonces"
   on public.annonces
   for all
-  using (public.is_admin())
-  with check (public.is_admin());
-
-create policy "Prof lit les annonces de ses groupes ou generales"
-  on public.annonces
-  for select
-  using (
-    public.is_prof()
-    and (
-      groupe_id is null
-      or public.is_prof_of_groupe(groupe_id)
-    )
-  );
-
-create policy "Prof publie annonces pour ses groupes"
-  on public.annonces
-  for insert
-  with check (
-    public.is_prof()
-    and groupe_id is not null
-    and public.is_prof_of_groupe(groupe_id)
-  );
-
-create policy "Prof supprime annonces de ses groupes"
-  on public.annonces
-  for delete
-  using (
-    public.is_prof()
-    and groupe_id is not null
-    and public.is_prof_of_groupe(groupe_id)
-  );
+  using (public.is_admin() or public.is_prof())
+  with check (public.is_admin() or public.is_prof());
 
 create policy "Parent lit les annonces generales ou de ses enfants"
   on public.annonces
@@ -662,3 +582,13 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ==============================================================================
+-- 7. PREMIER COMPTE DIRECTION (À FAIRE UNE SEULE FOIS)
+-- ==============================================================================
+-- 1) Dans Supabase > Authentication > Users > "Add user", créez votre compte
+--    (votre e-mail + un mot de passe, cochez "Auto Confirm User").
+-- 2) Puis exécutez cette ligne en remplaçant l'e-mail :
+--
+-- update public.profiles set role = 'admin', doit_changer_mdp = false
+-- where id = (select id from auth.users where email = 'VOTRE-EMAIL@exemple.com');

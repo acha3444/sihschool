@@ -221,20 +221,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Séance & Annonces</span>
+          <span>Cours, Zoom & Annonces</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('progression')}
-          className={`flex-shrink-0 min-h-[44px] px-5 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${
-            activeTab === 'progression'
-              ? 'bg-[#1B2A7A] text-white shadow-md'
-              : 'bg-[#FFF6E3] text-[#1B2A7A] hover:bg-[#FFEEC2]'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>Progression</span>
-        </button>
 
         <button
           onClick={() => setActiveTab('devoirs')}
@@ -248,29 +237,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           <span>Devoirs {devoirsAFaire.length > 0 && `(${devoirsAFaire.length})`}</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('presences')}
-          className={`flex-shrink-0 min-h-[44px] px-5 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${
-            activeTab === 'presences'
-              ? 'bg-[#1B2A7A] text-white shadow-md'
-              : 'bg-[#FFF6E3] text-[#1B2A7A] hover:bg-[#FFEEC2]'
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          <span>Présences</span>
-        </button>
 
-        <button
-          onClick={() => setActiveTab('bilan')}
-          className={`flex-shrink-0 min-h-[44px] px-5 py-2.5 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${
-            activeTab === 'bilan'
-              ? 'bg-[#1B2A7A] text-white shadow-md'
-              : 'bg-[#FFF6E3] text-[#1B2A7A] hover:bg-[#FFEEC2]'
-          }`}
-        >
-          <CreditCard className="w-4 h-4" />
-          <span>Appréciations & Paiements</span>
-        </button>
       </div>
 
       {/* TAB: ACCUEIL & SÉANCES */}
@@ -369,93 +336,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB: PROGRESSION */}
-      {activeTab === 'progression' && (
-        <div className="space-y-6">
-          <div className="cloud-card p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-              <div>
-                <h3 className="text-xl font-black text-[#1B2A7A] flex items-center gap-2">
-                  <Award className="w-6 h-6 text-[#1B2A7A]" />
-                  Suivi de la Méthode Nourania
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Progression officielle sur les 17 leçons d'apprentissage
-                </p>
-              </div>
-              <div className="bg-[#FFE15C] text-[#1B2A7A] px-4 py-2 rounded-2xl font-black text-lg text-center shadow-sm">
-                Leçon {leconActuelle} / {totalLecons}
-              </div>
-            </div>
-
-            {/* Barre de progression visuelle */}
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-sm font-bold text-[#1B2A7A]">
-                <span>Progression globale</span>
-                <span>{progressPercent}%</span>
-              </div>
-              <div className="w-full h-4 bg-white rounded-full overflow-hidden border border-[#1B2A7A]/10 p-0.5 shadow-inner">
-                <div
-                  className="h-full bg-gradient-to-r from-[#FFE15C] via-[#CDBDF2] to-[#1B2A7A] rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Grille des 17 leçons Nourania */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-extrabold text-[#1B2A7A] uppercase tracking-wider">
-                Feuille de route des 17 leçons :
-              </h4>
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-9 gap-2">
-                {Array.from({ length: 17 }, (_, i) => i + 1).map((num) => {
-                  const isDone = num < leconActuelle;
-                  const isCurrent = num === leconActuelle;
-
-                  return (
-                    <div
-                      key={num}
-                      className={`h-12 rounded-xl flex flex-col items-center justify-center font-bold text-xs transition-all ${
-                        isCurrent
-                          ? 'bg-[#1B2A7A] text-white ring-4 ring-[#FFE15C] shadow-md scale-105'
-                          : isDone
-                          ? 'bg-[#CDBDF2]/50 text-[#1B2A7A] border border-[#CDBDF2]'
-                          : 'bg-white/80 text-gray-400 border border-gray-200'
-                      }`}
-                    >
-                      <span>Leçon</span>
-                      <span className="text-sm font-black">{num}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Commentaire de l'enseignante */}
-            <div className="mt-8 p-5 rounded-2xl bg-white border border-[#CDBDF2]/50 space-y-2">
-              <h4 className="font-black text-base text-[#1B2A7A] flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-[#1B2A7A]" />
-                Commentaire de l'enseignante Siham
-              </h4>
-              {progression?.commentaire ? (
-                <p className="text-base text-gray-700 whitespace-pre-line leading-relaxed">
-                  "{progression.commentaire}"
-                </p>
-              ) : (
-                <p className="text-base text-gray-500 italic">
-                  Aucun commentaire saisi pour le moment.
-                </p>
-              )}
-              {progression?.mis_a_jour_le && (
-                <p className="text-xs text-gray-400 text-right font-medium">
-                  Mis à jour le {formatDate(progression.mis_a_jour_le)}
-                </p>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -698,137 +578,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* TAB: PRÉSENCES */}
-      {activeTab === 'presences' && (
-        <div className="cloud-card p-6">
-          <h3 className="text-lg md:text-xl font-black text-[#1B2A7A] mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-[#1B2A7A]" />
-            Historique des présences
-          </h3>
-
-          {presences.length === 0 ? (
-            <div className="text-center py-8 bg-white/50 rounded-2xl border border-dashed border-gray-200">
-              <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-base text-gray-500 font-medium">Aucun historique de présence enregistré</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {presences.map((p) => {
-                const seance = seances.find((s) => s.id === p.seance_id);
-                return (
-                  <div
-                    key={p.id}
-                    className="p-4 rounded-2xl bg-white border border-[#CDBDF2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="font-black text-base text-[#1B2A7A]">
-                        {seance?.date ? formatDate(seance.date) : 'Séance'}
-                      </div>
-                      {seance?.theme && (
-                        <p className="text-sm text-gray-600 font-medium">
-                          Thème : {seance.theme}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      {getPresenceBadge(p.statut)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB: APPRÉCIATIONS & PAIEMENTS */}
-      {activeTab === 'bilan' && (
-        <div className="space-y-6">
-          {/* Appréciations mensuelles */}
-          <div className="cloud-card p-6">
-            <h3 className="text-lg md:text-xl font-black text-[#1B2A7A] mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#1B2A7A]" />
-              Appréciations de l'enseignante
-            </h3>
-
-            {appreciations.length === 0 ? (
-              <div className="text-center py-8 bg-white/50 rounded-2xl border border-dashed border-gray-200">
-                <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-base text-gray-500 font-medium">Aucune appréciation pour le moment</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {appreciations.map((app) => (
-                  <div key={app.id} className="p-4 rounded-2xl bg-white border border-[#CDBDF2]/40 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-sm text-[#1B2A7A] uppercase tracking-wide bg-[#CDBDF2]/30 px-3 py-1 rounded-full">
-                        Période : {formatPeriod(app.periode)}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {formatDate(app.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-base text-gray-800 whitespace-pre-line leading-relaxed pt-1">
-                      {app.texte}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Paiements / Cotisations */}
-          <div className="cloud-card p-6">
-            <h3 className="text-lg md:text-xl font-black text-[#1B2A7A] mb-4 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-[#1B2A7A]" />
-              Suivi des paiements
-            </h3>
-
-            {paiements.length === 0 ? (
-              <div className="text-center py-8 bg-white/50 rounded-2xl border border-dashed border-gray-200">
-                <CreditCard className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-base text-gray-500 font-medium">Aucun historique de paiement pour le moment</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {paiements.map((paiement) => (
-                  <div
-                    key={paiement.id}
-                    className="p-4 rounded-2xl bg-white border border-[#CDBDF2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="font-black text-base text-[#1B2A7A]">
-                        Mois de {formatPeriod(paiement.mois)}
-                      </div>
-                      <div className="text-sm text-gray-600 font-medium flex items-center gap-2">
-                        <span>Montant : <strong>{paiement.montant} €</strong></span>
-                        {paiement.moyen && (
-                          <span className="text-xs text-gray-400">({paiement.moyen})</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {paiement.statut === 'paye' ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-[#EAFBF1] text-[#1E7E44] border border-[#C5F3D6]">
-                          <CheckCircle2 className="w-4 h-4 text-[#1E7E44]" />
-                          Payé {paiement.date_paiement && `le ${formatDate(paiement.date_paiement)}`}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FEF08A] text-[#854D0E] border border-[#FDE047]">
-                          <Clock className="w-4 h-4 text-[#854D0E]" />
-                          En attente de règlement
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
 

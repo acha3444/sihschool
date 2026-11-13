@@ -175,7 +175,7 @@ export const App: React.FC = () => {
           <Route
             path="/prof"
             element={
-              <ProtectedRoute allowedRoles={['prof']}>
+              <ProtectedRoute allowedRoles={['prof', 'admin']}>
                 <ProfDashboard />
               </ProtectedRoute>
             }

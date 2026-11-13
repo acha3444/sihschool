@@ -1,5 +1,13 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+// Routes API servies en local (en production, Vercel les sert depuis /api)
+const API_ROUTES: Record<string, string> = {
+  '/api/admin/create-user': './api/admin/create-user.js',
+  '/api/admin/reset-password': './api/admin/reset-password.js',
+};
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -11,46 +19,44 @@ export default defineConfig(({ mode }) => {
       {
         name: 'local-api-handler',
         configureServer(server) {
-          server.middlewares.use(async (req, res, next) => {
-            if (req.url === '/api/admin/create-user' && req.method === 'POST') {
+          server.middlewares.use(async (req: any, res: any, next) => {
+            const route = req.url ? API_ROUTES[req.url.split('?')[0]] : undefined;
+            if (!route || req.method !== 'POST') return next();
+
+            let bodyStr = '';
+            req.on('data', (chunk: Buffer) => {
+              bodyStr += chunk;
+            });
+            req.on('end', async () => {
               try {
-                let bodyStr = '';
-                req.on('data', (chunk) => {
-                  bodyStr += chunk;
-                });
-                req.on('end', async () => {
-                  try {
-                    req.body = bodyStr ? JSON.parse(bodyStr) : {};
-                  } catch {
-                    req.body = {};
-                  }
+                try {
+                  req.body = bodyStr ? JSON.parse(bodyStr) : {};
+                } catch {
+                  req.body = {};
+                }
 
-                  // Copier les variables d'environnement pour le handler
-                  process.env.VITE_SUPABASE_URL = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-                  process.env.SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+                for (const key of ['VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
+                  if (env[key]) process.env[key] = env[key];
+                }
 
-                  const { default: handler } = await import('./api/admin/create-user.js');
+                const { default: handler } = await import(/* @vite-ignore */ pathToFileURL(path.resolve(process.cwd(), route)).href);
 
-                  // Adapter l'objet res pour Express/Vercel compatibilité
-                  res.status = (code) => {
-                    res.statusCode = code;
-                    return res;
-                  };
-                  res.json = (data) => {
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify(data));
-                    return res;
-                  };
+                res.status = (code: number) => {
+                  res.statusCode = code;
+                  return res;
+                };
+                res.json = (data: unknown) => {
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify(data));
+                  return res;
+                };
 
-                  await handler(req, res);
-                });
-              } catch (e) {
+                await handler(req, res);
+              } catch (e: any) {
                 res.statusCode = 500;
                 res.end(JSON.stringify({ error: e.message }));
               }
-              return;
-            }
-            next();
+            });
           });
         },
       },
