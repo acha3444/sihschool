@@ -37,6 +37,7 @@ export interface Eleve {
   type: EleveType;
   parent_id?: string | null;
   compte_id?: string | null;
+  identifiant?: string | null;
   groupe_id?: string | null;
   notes_admin?: string | null;
   created_at: string;

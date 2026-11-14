@@ -70,6 +70,10 @@ export const LoginPage: React.FC = () => {
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
+    if (forgotEmail && !forgotEmail.includes('@')) {
+      setForgotError("Tu es élève ? Demande à ton parent : il peut changer ton mot de passe depuis son espace.");
+      return;
+    }
     if (!forgotEmail) {
       setForgotError('Veuillez renseigner votre adresse e-mail.');
       return;
@@ -127,17 +131,20 @@ export const LoginPage: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-[#1B2A7A] block">
-                  Adresse e-mail *
+                  E-mail ou identifiant *
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" strokeWidth={2.5} />
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nom@exemple.com"
-                    autoComplete="email"
+                    placeholder="nom@exemple.com ou identifiant"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className="w-full py-3.5 pl-11 pr-4 rounded-full bg-[#FFFFFF] border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-[#1B2A7A] text-sm font-bold min-h-[44px]"
                   />
                 </div>
@@ -236,7 +243,9 @@ export const LoginPage: React.FC = () => {
                     <div className="relative">
                       <Mail className="w-4 h-4 text-[#4A5487] absolute left-4 top-1/2 -translate-y-1/2" strokeWidth={2.5} />
                       <input
-                        type="email"
+                        type="text"
+                        inputMode="email"
+                        autoCapitalize="none"
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}

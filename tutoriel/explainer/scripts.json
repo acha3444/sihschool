@@ -1,0 +1,23 @@
+{
+  "enseignante": [
+    { "id": "e1-intro", "texte": "Bienvenue dans votre espace enseignante Sih School. En quelques minutes, découvrez comment gérer vos élèves, vos cours et vos devoirs. Simplement." },
+    { "id": "e2-connexion", "texte": "Pour commencer, connectez-vous avec l'e-mail et le mot de passe envoyés par la direction. À la première connexion, vous choisissez votre propre mot de passe." },
+    { "id": "e3-groupe", "texte": "Créez ensuite votre groupe : son nom, le jour, l'horaire, et le lien de votre salle Zoom. Les familles le retrouveront en un clic." },
+    { "id": "e4-lien", "texte": "Chaque groupe a son lien d'inscription. Envoyez-le aux familles sur WhatsApp : les parents créent leur compte eux-mêmes, et leurs enfants arrivent directement dans votre groupe." },
+    { "id": "e5-devoir", "texte": "Pour donner un devoir, écrivez la consigne, puis enregistrez un vocal pour montrer la bonne prononciation. Il est envoyé à tout le groupe." },
+    { "id": "e6-correction", "texte": "Quand un élève récite, vous l'écoutez ici. Validez, ou demandez-lui de réviser, avec un petit mot d'encouragement." },
+    { "id": "e7-annonces", "texte": "Publiez une annonce pour prévenir les familles. Et si un parent oublie son mot de passe, créez-lui-en un nouveau en un clic." },
+    { "id": "e8-fin", "texte": "Sih School. Vos cours d'arabe, simplement." }
+  ],
+  "parents": [
+    { "id": "p1-intro", "texte": "Bienvenue sur Sih School ! Voici comment suivre les cours d'arabe de votre enfant, ou les vôtres, depuis votre téléphone." },
+    { "id": "p2-inscription", "texte": "Ouvrez le lien d'inscription envoyé par l'enseignante. Indiquez votre e-mail, choisissez votre mot de passe, et ajoutez le prénom de vos enfants. Vous êtes un élève adulte ? Choisissez « Je m'inscris moi-même »." },
+    { "id": "p3-zoom", "texte": "Votre espace s'ouvre aussitôt. Vous y voyez le jour et l'heure du cours. Le moment venu, appuyez sur « Rejoindre sur Zoom ». C'est tout !" },
+    { "id": "p4-annonces", "texte": "Juste en dessous, retrouvez les messages de l'enseignante." },
+    { "id": "p5-devoir", "texte": "Dans l'onglet Devoirs, lisez la consigne et écoutez le vocal de la maîtresse." },
+    { "id": "p6-reciter", "texte": "Puis appuyez sur le micro, récitez, et envoyez votre enregistrement." },
+    { "id": "p7-retour", "texte": "L'enseignante l'écoute et vous répond : validé, ou à réviser, avec son commentaire." },
+    { "id": "p8-mdp", "texte": "Mot de passe oublié ? Cliquez sur « Mot de passe oublié » à la connexion, ou demandez-en un nouveau à l'enseignante." },
+    { "id": "p9-fin", "texte": "Sih School. Apprendre l'arabe avec joie et douceur." }
+  ]
+}

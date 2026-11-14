@@ -464,11 +464,50 @@ const handleInscription = (method: string, url: URL, body: Row, token: string | 
   return { status: 200, json: { success: true, email, role } };
 };
 
+// Accès personnel d'un enfant (équivalent de api/compte-enfant.js)
+const handleCompteEnfant = (body: Row, token: string | null) => {
+  const db = loadDb();
+  const caller = db.profiles.find((p) => p.id === token?.replace('demo-', ''));
+  if (!caller || !['parent', 'prof', 'admin'].includes(caller.role)) return { status: 403, json: { error: 'Accès refusé.' } };
+  const eleve = db.eleves.find((e) => e.id === body.eleveId);
+  if (!eleve) return { status: 404, json: { error: 'Élève introuvable.' } };
+  if (caller.role === 'parent' && eleve.parent_id !== caller.id) return { status: 403, json: { error: "Vous ne pouvez gérer que l'accès de vos enfants." } };
+  const okMdp = typeof body.motDePasse === 'string' && body.motDePasse.length >= 6;
+  if (body.action === 'creer') {
+    if (eleve.compte_id) return { status: 409, json: { error: 'Cet enfant a déjà son accès.' } };
+    if (!okMdp) return { status: 400, json: { error: 'Le mot de passe doit faire au moins 6 caractères.' } };
+    const base = String(eleve.prenom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '') || 'eleve';
+    let identifiant = '';
+    while (!identifiant || db.eleves.some((e) => e.identifiant === identifiant)) identifiant = base + Math.floor(1000 + Math.random() * 9000);
+    const id = uuid();
+    db._users.push({ id, email: `${identifiant}@eleves.sihschool.com`, password: body.motDePasse });
+    db.profiles.push({ id, role: 'eleve', prenom: eleve.prenom, nom: eleve.nom, telephone: null, doit_changer_mdp: false, created_at: nowIso() });
+    eleve.compte_id = id; eleve.identifiant = identifiant;
+    saveDb(db);
+    return { status: 200, json: { success: true, identifiant } };
+  }
+  if (!eleve.compte_id) return { status: 400, json: { error: "Cet enfant n'a pas encore d'accès." } };
+  if (body.action === 'mdp') {
+    if (!okMdp) return { status: 400, json: { error: 'Le mot de passe doit faire au moins 6 caractères.' } };
+    const u = db._users.find((x) => x.id === eleve.compte_id); if (u) u.password = body.motDePasse;
+    saveDb(db);
+    return { status: 200, json: { success: true, identifiant: eleve.identifiant } };
+  }
+  if (body.action === 'retirer') {
+    db._users = db._users.filter((x) => x.id !== eleve.compte_id);
+    db.profiles = db.profiles.filter((x) => x.id !== eleve.compte_id);
+    eleve.compte_id = null; eleve.identifiant = null;
+    saveDb(db);
+    return { status: 200, json: { success: true } };
+  }
+  return { status: 400, json: { error: 'Action inconnue.' } };
+};
+
 export const installDemoApi = () => {
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    if (url.includes('/api/admin/') || url.includes('/api/inscription')) {
+    if (url.includes('/api/admin/') || url.includes('/api/inscription') || url.includes('/api/compte-enfant')) {
       const headers = new Headers(init?.headers);
       const token = headers.get('Authorization')?.replace('Bearer ', '') || null;
       const body = init?.body ? JSON.parse(String(init.body)) : {};
@@ -476,7 +515,9 @@ export const installDemoApi = () => {
       const parsed = new URL(url, window.location.origin);
       const res = parsed.pathname === '/api/inscription'
         ? handleInscription(init?.method || 'GET', parsed, body, token)
-        : handleApi(parsed.pathname, body, token);
+        : parsed.pathname === '/api/compte-enfant'
+          ? handleCompteEnfant(body, token)
+          : handleApi(parsed.pathname, body, token);
       return new Response(JSON.stringify(res.json), {
         status: res.status,
         headers: { 'Content-Type': 'application/json' },

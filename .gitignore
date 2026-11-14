@@ -34,3 +34,5 @@ cloudflared*
 # Images brutes du tutoriel vidéo
 tutoriel/brut/
 tutoriel/*.mp4
+tutoriel/explainer/*.mp4
+tutoriel/explainer/*.html

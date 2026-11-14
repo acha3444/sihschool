@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../types/database';
+import { versEmailConnexion } from '../lib/identifiant';
 
 interface AuthContextType {
   user: User | null;
@@ -97,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: versEmailConnexion(email),
         password,
       });
 
@@ -106,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           success: false,
           error:
             error.message === 'Invalid login credentials'
-              ? 'Adresse e-mail ou mot de passe incorrect.'
+              ? 'Identifiant ou mot de passe incorrect.'
               : error.message,
         };
       }

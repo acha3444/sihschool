@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { Eleve, Groupe, Seance, Presence, Progression, Devoir, Appreciation, Paiement, Annonce } from '../../types/database';
 import { StudentPortalView } from '../../components/portal/StudentPortalView';
+import { AccesEnfant } from '../../components/portal/AccesEnfant';
 import { Users, User, AlertCircle, RefreshCw } from 'lucide-react';
 
 export const FamilleDashboard: React.FC = () => {
@@ -260,6 +261,12 @@ export const FamilleDashboard: React.FC = () => {
           </span>
         )}
       </div>
+
+      {/* Accès personnel de l'enfant (identifiant pour son téléphone) */}
+      <AccesEnfant
+        enfant={selectedEnfant}
+        onChange={(patch) => setEnfants((prev) => prev.map((e) => (e.id === selectedEnfant.id ? { ...e, ...patch } : e)))}
+      />
 
       {/* Composant de vue complète pour l'élève sélectionné */}
       <StudentPortalView

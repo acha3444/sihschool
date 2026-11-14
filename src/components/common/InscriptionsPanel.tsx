@@ -282,6 +282,11 @@ export const InscriptionsPanel: React.FC<{ onChange?: () => void }> = ({ onChang
                   {eleve.type === 'enfant' ? 'Parent' : 'Compte'} :{' '}
                   <strong>{compte ? `${compte.prenom} ${compte.nom}` : 'Aucun compte'}</strong>
                 </p>
+                {eleve.type === 'enfant' && eleve.identifiant && (
+                  <p className="text-xs text-[#4A5487]">
+                    Accès élève : <strong className="font-mono">{eleve.identifiant}</strong>
+                  </p>
+                )}
                 {compte && (
                   <button
                     type="button"

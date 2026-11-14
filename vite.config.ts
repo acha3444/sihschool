@@ -8,6 +8,7 @@ const API_ROUTES: Record<string, string> = {
   '/api/admin/create-user': './api/admin/create-user.js',
   '/api/admin/reset-password': './api/admin/reset-password.js',
   '/api/inscription': './api/inscription.js',
+  '/api/compte-enfant': './api/compte-enfant.js',
 };
 
 // https://vitejs.dev/config/
