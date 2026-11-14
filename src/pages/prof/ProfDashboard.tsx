@@ -17,6 +17,7 @@ import {
 import { AudioPlayer } from '../../components/common/AudioPlayer';
 import { AudioRecorder } from '../../components/common/AudioRecorder';
 import { InscriptionsPanel } from '../../components/common/InscriptionsPanel';
+import { LienInscription } from '../../components/common/LienInscription';
 import {
   Calendar,
   Users,
@@ -1300,6 +1301,9 @@ export const ProfDashboard: React.FC = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* Lien d'inscription à partager aux familles */}
+                      <LienInscription groupe={grp} onChange={loadProfData} />
 
                       {/* Actions rapides sur le groupe */}
                       <div className="pt-2 border-t border-[#CDBDF2]/40 flex flex-wrap gap-2">

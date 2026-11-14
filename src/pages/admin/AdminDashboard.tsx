@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { InscriptionsPanel } from '../../components/common/InscriptionsPanel';
+import { LienInscription } from '../../components/common/LienInscription';
 import {
   Profile,
   Groupe,
@@ -1070,6 +1071,8 @@ export const AdminDashboard: React.FC = () => {
                       </p>
                     )}
                   </div>
+
+                  <LienInscription groupe={grp} onChange={loadAllData} />
 
                   {/* Actions Groupe */}
                   <div className="pt-3 border-t border-[#CDBDF2]/30 flex items-center gap-2 flex-wrap">

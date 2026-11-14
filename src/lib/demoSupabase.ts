@@ -101,6 +101,9 @@ const DEFAULTS: Record<string, () => Row> = {
   annonces: () => ({ publiee_le: today() }),
   progressions: () => ({ formation: 'nourania', lecon_actuelle: 1, mis_a_jour_le: nowIso() }),
   eleves: () => ({ type: 'enfant', parent_id: null, compte_id: null, groupe_id: null, notes_admin: null }),
+  groupes: () => ({
+    code_inscription: Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join(''),
+  }),
 };
 
 type Filter = (row: Row) => boolean;
@@ -415,16 +418,65 @@ const handleApi = (path: string, body: Row, token: string | null) => {
   return { status: 404, json: { error: 'Route inconnue.' } };
 };
 
+// Inscription par lien de groupe (équivalent de api/inscription.js)
+const handleInscription = (method: string, url: URL, body: Row, token: string | null) => {
+  const db = loadDb();
+  const code = String(method === 'GET' ? url.searchParams.get('code') : body.code || '').toUpperCase();
+  const groupe = db.groupes.find((g) => g.code_inscription === code);
+  if (!groupe) {
+    return { status: 404, json: { error: "Ce lien d'inscription n'existe plus. Demandez le nouveau lien à l'enseignante." } };
+  }
+  if (method === 'GET') {
+    const prof = db.profiles.find((p) => p.id === groupe.prof_id);
+    return {
+      status: 200,
+      json: { success: true, groupe: { nom: groupe.nom, formation: groupe.formation, jour: groupe.jour, heure: groupe.heure, enseignante: prof?.prenom || null } },
+    };
+  }
+  const enfants = (Array.isArray(body.enfants) ? body.enfants : [])
+    .map((e: Row) => ({ prenom: String(e?.prenom || '').trim(), nom: String(e?.nom || '').trim() }))
+    .filter((e: Row) => e.prenom);
+  const addEleve = (row: Row) => db.eleves.push({ id: uuid(), created_at: nowIso(), date_naissance: null, notes_admin: null, parent_id: null, compte_id: null, ...row });
+
+  if (token) {
+    const parent = db.profiles.find((p) => p.id === token.replace('demo-', ''));
+    if (parent?.role !== 'parent') return { status: 403, json: { error: 'Seul un compte parent peut ajouter un enfant.' } };
+    if (!enfants.length) return { status: 400, json: { error: "Indiquez le prénom d'au moins un enfant." } };
+    enfants.forEach((e: Row) => addEleve({ prenom: e.prenom, nom: e.nom, type: 'enfant', parent_id: parent.id, groupe_id: groupe.id }));
+    saveDb(db);
+    return { status: 200, json: { success: true, ajoutes: enfants.length } };
+  }
+
+  const type = body.type === 'adulte' ? 'adulte' : 'parent';
+  const email = String(body.email || '').toLowerCase().trim();
+  if (!body.prenom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: 400, json: { error: "Le prénom et un e-mail valide sont obligatoires." } };
+  if (String(body.motDePasse || '').length < 6) return { status: 400, json: { error: 'Le mot de passe doit faire au moins 6 caractères.' } };
+  if (type === 'parent' && !enfants.length) return { status: 400, json: { error: "Indiquez le prénom d'au moins un enfant." } };
+  if (db._users.some((u) => u.email === email)) return { status: 409, json: { error: 'Un compte existe déjà avec cet e-mail.' } };
+
+  const id = uuid();
+  const role = type === 'adulte' ? 'eleve' : 'parent';
+  db._users.push({ id, email, password: body.motDePasse });
+  db.profiles.push({ id, role, prenom: String(body.prenom).trim(), nom: String(body.nom || '').trim(), telephone: body.telephone || null, doit_changer_mdp: false, created_at: nowIso() });
+  if (type === 'adulte') addEleve({ prenom: String(body.prenom).trim(), nom: String(body.nom || '').trim(), type: 'adulte', compte_id: id, groupe_id: groupe.id });
+  else enfants.forEach((e: Row) => addEleve({ prenom: e.prenom, nom: e.nom || String(body.nom || '').trim(), type: 'enfant', parent_id: id, groupe_id: groupe.id }));
+  saveDb(db);
+  return { status: 200, json: { success: true, email, role } };
+};
+
 export const installDemoApi = () => {
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    if (url.includes('/api/admin/')) {
+    if (url.includes('/api/admin/') || url.includes('/api/inscription')) {
       const headers = new Headers(init?.headers);
       const token = headers.get('Authorization')?.replace('Bearer ', '') || null;
       const body = init?.body ? JSON.parse(String(init.body)) : {};
       await new Promise((r) => setTimeout(r, 400));
-      const res = handleApi(new URL(url, window.location.origin).pathname, body, token);
+      const parsed = new URL(url, window.location.origin);
+      const res = parsed.pathname === '/api/inscription'
+        ? handleInscription(init?.method || 'GET', parsed, body, token)
+        : handleApi(parsed.pathname, body, token);
       return new Response(JSON.stringify(res.json), {
         status: res.status,
         headers: { 'Content-Type': 'application/json' },

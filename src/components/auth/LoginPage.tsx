@@ -184,7 +184,7 @@ export const LoginPage: React.FC = () => {
               </button>
 
               <div className="pt-2 text-center text-xs text-[#4A5487] font-semibold leading-relaxed">
-                Première connexion ? Utilisez le <strong>mot de passe temporaire</strong> transmis par la direction.
+                Pas encore de compte ? Demandez à l'enseignante le <strong>lien d'inscription</strong> de votre groupe.
               </div>
             </form>
           ) : (

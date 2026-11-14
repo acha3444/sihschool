@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 const API_ROUTES: Record<string, string> = {
   '/api/admin/create-user': './api/admin/create-user.js',
   '/api/admin/reset-password': './api/admin/reset-password.js',
+  '/api/inscription': './api/inscription.js',
 };
 
 // https://vitejs.dev/config/
@@ -21,7 +22,8 @@ export default defineConfig(({ mode }) => {
         configureServer(server) {
           server.middlewares.use(async (req: any, res: any, next) => {
             const route = req.url ? API_ROUTES[req.url.split('?')[0]] : undefined;
-            if (!route || req.method !== 'POST') return next();
+            if (!route || (req.method !== 'POST' && req.method !== 'GET')) return next();
+            req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams);
 
             let bodyStr = '';
             req.on('data', (chunk: Buffer) => {

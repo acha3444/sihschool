@@ -8,7 +8,8 @@
 ## ⚠️ Ne PAS lancer `supabase/schema.sql`
 Ce script efface toutes les tables avant de les recréer. Il ne sert que pour un projet Supabase **vide**.
 Le projet actuel a déjà ses tables. Les droits de l'enseignante ont été mis à jour avec
-`supabase/migration-droits-enseignante.sql` (déjà appliqué, le 14/11/2026).
+`supabase/migration-droits-enseignante.sql` puis `supabase/migration-inscription-par-lien.sql`
+(tous deux déjà appliqués, le 14/11/2026).
 
 ## Si l'appli ne marche plus du tout
 Supabase met en pause les projets gratuits après 7 jours sans visite.
@@ -31,6 +32,12 @@ Puis assembler la vidéo :
 ```bash
 cd tutoriel && ffmpeg -y -f concat -safe 0 -i brut/images.txt -vf "fps=30,format=yuv420p" -c:v libx264 -crf 20 -movflags +faststart tutoriel-sihscool.mp4
 ```
+
+## Inscription des familles par lien
+Chaque groupe a un **lien d'inscription** (carte du groupe, onglet *Groupes & Zoom*).
+L'enseignante le partage sur WhatsApp : le parent crée son compte avec son propre mot de passe,
+et ses enfants arrivent directement dans le groupe. Un parent déjà inscrit peut rouvrir le lien
+d'un autre groupe pour y ajouter un enfant. « Nouveau lien » désactive l'ancien.
 
 ## Qui peut faire quoi
 - **Direction** : tout (créer l'enseignante, les parents, les élèves, groupes, Zoom, annonces, devoirs).

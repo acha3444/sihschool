@@ -22,6 +22,7 @@ export interface Groupe {
   jour: string;
   heure: string;
   lien_zoom?: string | null;
+  code_inscription?: string | null;
   prof_id?: string | null;
   created_at: string;
   // Joined fields

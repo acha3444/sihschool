@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import { isSupabaseConfigured } from './lib/supabase';
 import { LoginPage } from './components/auth/LoginPage';
 import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
+import { InscriptionPage } from './components/auth/InscriptionPage';
 import { ForcePasswordChangeModal } from './components/auth/ForcePasswordChangeModal';
 import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
@@ -160,6 +161,9 @@ export const App: React.FC = () => {
 
           {/* Page de réinitialisation de mot de passe */}
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Inscription des familles par le lien du groupe */}
+          <Route path="/inscription/:code" element={<InscriptionPage />} />
 
           {/* Espace Admin (Direction) */}
           <Route
