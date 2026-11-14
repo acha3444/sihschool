@@ -1,43 +1,38 @@
-# Remettre l'appli Sihscool en ligne (environ 15 minutes)
+# Sihscool : mémo technique
 
-L'appli garde les comptes, les devoirs et les vocaux sur **Supabase** (gratuit).
-L'ancien projet Supabase a été supprimé, il faut en créer un nouveau.
+## Où est quoi
+- **Site en ligne** : https://app.sihschool.com (Vercel, projet `sihschool`, mis à jour à chaque envoi sur GitHub `main`)
+- **Base de données** : Supabase, organisation `sihschool`, projet `sihschool` (région Irlande)
+- **Clés** : déjà configurées sur Vercel. En local, dans `.env` (jamais sur GitHub).
 
-## 1. Créer le projet Supabase
-1. Va sur https://supabase.com, crée un compte, puis clique sur **New project**.
-2. Choisis un nom (ex. `sihscool`), un mot de passe de base (garde-le) et la région **Europe (Paris ou Frankfurt)**.
-3. Attends 1 à 2 minutes que le projet soit prêt.
+## ⚠️ Ne PAS lancer `supabase/schema.sql`
+Ce script efface toutes les tables avant de les recréer. Il ne sert que pour un projet Supabase **vide**.
+Le projet actuel a déjà ses tables. Les droits de l'enseignante ont été mis à jour avec
+`supabase/migration-droits-enseignante.sql` (déjà appliqué, le 14/11/2026).
 
-## 2. Créer les tables
-1. Dans Supabase, ouvre **SQL Editor**, puis **New query**.
-2. Copie tout le contenu de `supabase/schema.sql`, colle-le, puis clique sur **Run**.
+## Si l'appli ne marche plus du tout
+Supabase met en pause les projets gratuits après 7 jours sans visite.
+Aller sur supabase.com, ouvrir le projet `sihschool`, cliquer **Resume project**, attendre 2 à 3 minutes.
 
-## 3. Créer ton compte Direction (super admin)
-1. **Authentication > Users > Add user > Create new user** : ton e-mail + un mot de passe, coche **Auto Confirm User**.
-2. Dans **SQL Editor**, lance (avec ton e-mail) :
-   ```sql
-   update public.profiles set role = 'admin', doit_changer_mdp = false
-   where id = (select id from auth.users where email = 'ton-email@exemple.com');
-   ```
+## Tester sans toucher aux vraies données (mode démo)
+```bash
+npm run demo
+```
+Ouvre http://localhost:5175 : une copie de l'appli avec une base fictive, sur l'ordinateur seulement.
+- Compte de départ : `direction@demo.test` / `demo1234`
+- Ajouter `?reset` à l'adresse pour tout remettre à zéro.
 
-## 4. Récupérer les 3 clés
-Dans **Project Settings > API** (ou **API Keys**) :
-- `Project URL` → `VITE_SUPABASE_URL`
-- `anon public` → `VITE_SUPABASE_ANON_KEY`
-- `service_role` (secrète, ne la partage jamais) → `SUPABASE_SERVICE_ROLE_KEY`
+## Refaire la vidéo tutoriel
+Avec `npm run demo` lancé :
+```bash
+python3 tutoriel/tourner_tutoriel.py
+```
+Puis assembler la vidéo :
+```bash
+cd tutoriel && ffmpeg -y -f concat -safe 0 -i brut/images.txt -vf "fps=30,format=yuv420p" -c:v libx264 -crf 20 -movflags +faststart tutoriel-sihscool.mp4
+```
 
-## 5. Les mettre sur Vercel
-Projet Vercel > **Settings > Environment Variables** : ajoute les 3 variables, puis **Deployments > Redeploy**.
-
-Pour tester sur l'ordinateur, mets les 3 mêmes lignes dans le fichier `.env` puis lance `npm run dev`.
-
-## 6. Utilisation
-- **Toi (Direction)** : onglet *Enseignantes* → « Ajouter une enseignante » pour créer le compte de ta mère. Tu peux aussi inscrire des élèves et des parents, gérer les groupes et les liens Zoom. Le bouton « Espace devoirs » ouvre la même vue que ta mère.
-- **Ta mère (Enseignante)** :
-  - *Devoirs* : donner un devoir (texte et/ou vocal), écouter et corriger les vocaux des élèves.
-  - *Élèves & comptes* : inscrire un élève (enfant avec un compte parent, ou adulte avec son propre compte), donner un nouveau mot de passe.
-  - *Groupes & Zoom* : créer les groupes et coller le lien Zoom.
-  - *Annonces*.
-- **Parents / élèves** : voient le lien Zoom, les annonces et les devoirs, et envoient leur réponse en vocal.
-
-À chaque création de compte, l'appli affiche un message prêt à envoyer sur WhatsApp avec un mot de passe temporaire. À la première connexion, chacun choisit son propre mot de passe. Le bouton **Mot de passe** en haut de l'écran permet de le changer quand on veut.
+## Qui peut faire quoi
+- **Direction** : tout (créer l'enseignante, les parents, les élèves, groupes, Zoom, annonces, devoirs).
+- **Enseignante** : élèves et comptes parents/élèves, nouveaux mots de passe, groupes et Zoom, devoirs (texte + vocal), correction des vocaux, annonces.
+- **Parents / élèves adultes** : lien Zoom, annonces, devoirs, réponse en vocal.

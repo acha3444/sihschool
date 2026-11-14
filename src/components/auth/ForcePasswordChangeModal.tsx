@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, KeyRound, AlertCircle, CheckCircle2, LogOut, ArrowRight } from 'lucide-react';
 
@@ -10,6 +10,14 @@ export const ForcePasswordChangeModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Remettre le formulaire à zéro quand un autre compte se connecte sur le même appareil
+  useEffect(() => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setError('');
+    setSuccess(false);
+  }, [user?.id]);
 
   // Ce modal ne doit s'afficher QUE si l'utilisateur est connecté et doit changer son mot de passe
   if (!user || !profile || !profile.doit_changer_mdp) {

@@ -1055,7 +1055,7 @@ export const ProfDashboard: React.FC = () => {
       )}
 
       {/* Élèves & comptes : inscriptions, comptes parents / élèves, mots de passe */}
-      {activeTab === 'inscriptions' && <InscriptionsPanel />}
+      {activeTab === 'inscriptions' && <InscriptionsPanel onChange={loadProfData} />}
 
       {/* ─────────────────────────────────────────────────────────────────────
           5. ONGLET : GESTION DES GROUPES & ATTRIBUTION AUTONOME
@@ -1303,18 +1303,6 @@ export const ProfDashboard: React.FC = () => {
 
                       {/* Actions rapides sur le groupe */}
                       <div className="pt-2 border-t border-[#CDBDF2]/40 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSeanceGroupeId(grp.id);
-                            setIsAddSeanceModalOpen(true);
-                          }}
-                          className="btn-pill-white text-xs !min-h-[36px] flex items-center gap-1 border border-[#CDBDF2] font-bold"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>+ Séance</span>
-                        </button>
-
                         <button
                           type="button"
                           onClick={() => {

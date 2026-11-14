@@ -30,3 +30,7 @@ cloudflared*
 .env
 .env.*
 !.env.example
+
+# Images brutes du tutoriel vidéo
+tutoriel/brut/
+tutoriel/*.mp4

@@ -35,15 +35,33 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   };
 
+  // Les vocaux enregistrés par Chrome (webm) n'indiquent pas leur durée :
+  // on saute tout au bout du fichier pour la connaître, puis on revient au début.
+  const probingDuration = useRef(false);
+
+  const finishProbe = () => {
+    const audio = audioRef.current;
+    if (!audio || !probingDuration.current || !Number.isFinite(audio.duration)) return;
+    probingDuration.current = false;
+    setDuration(audio.duration);
+    audio.currentTime = 0;
+    setCurrentTime(0);
+  };
+
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
+    if (!audioRef.current) return;
+    if (probingDuration.current) return finishProbe();
+    setCurrentTime(audioRef.current.currentTime);
   };
 
   const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration || 0);
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (Number.isFinite(audio.duration)) {
+      setDuration(audio.duration);
+    } else {
+      probingDuration.current = true;
+      audio.currentTime = 1e101;
     }
   };
 
@@ -53,7 +71,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   };
 
   const formatSeconds = (sec: number) => {
-    if (!sec || isNaN(sec)) return '00:00';
+    if (!sec || !Number.isFinite(sec)) return '00:00';
     const mins = Math.floor(sec / 60);
     const secs = Math.floor(sec % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -118,6 +136,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         src={src}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onDurationChange={finishProbe}
         onEnded={handleEnded}
         className="hidden"
       />

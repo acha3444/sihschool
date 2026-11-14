@@ -34,7 +34,7 @@ const labelClass = 'text-xs font-extrabold text-[#1B2A7A] block mb-1';
  * Inscriptions : créer des élèves (enfant + compte parent, ou adulte avec son compte),
  * réinitialiser les mots de passe parents / élèves. Utilisé par l'enseignante.
  */
-export const InscriptionsPanel: React.FC = () => {
+export const InscriptionsPanel: React.FC<{ onChange?: () => void }> = ({ onChange }) => {
   const { session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [eleves, setEleves] = useState<Eleve[]>([]);
@@ -165,8 +165,11 @@ export const InscriptionsPanel: React.FC = () => {
       setModalOpen(false);
       resetForm();
       if (created) {
+        // le tableau de bord parent est rafraîchi à la fermeture de cette fenêtre
         setCopied(false);
         setIdentifiants(created);
+      } else {
+        onChange?.();
       }
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue.');
@@ -200,6 +203,7 @@ export const InscriptionsPanel: React.FC = () => {
     const { error: delError } = await supabase.from('eleves').delete().eq('id', eleve.id);
     if (delError) return alert(delError.message);
     await load();
+    onChange?.();
   };
 
   const handleCopy = () => {
@@ -429,7 +433,15 @@ export const InscriptionsPanel: React.FC = () => {
                 <CheckCircle2 className="w-5 h-5" />
                 <span>{identifiants.titre}</span>
               </div>
-              <button type="button" onClick={() => setIdentifiants(null)} className="text-[#4A5487]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIdentifiants(null);
+                  onChange?.();
+                }}
+                className="text-[#4A5487]"
+                aria-label="Fermer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>

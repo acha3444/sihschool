@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogOut, ShieldCheck, Users, GraduationCap, BookOpen, KeyRound, X, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -137,7 +138,8 @@ export const Header: React.FC = () => {
           </button>
         </div>
       </div>
-      {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+      {/* Rendu dans <body> : le flou de l'en-tête casserait le positionnement de la fenêtre */}
+      {showPassword && createPortal(<ChangePasswordModal onClose={() => setShowPassword(false)} />, document.body)}
     </header>
   );
 };
