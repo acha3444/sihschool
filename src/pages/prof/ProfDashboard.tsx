@@ -17,6 +17,7 @@ import {
 import { AudioPlayer } from '../../components/common/AudioPlayer';
 import { AudioRecorder } from '../../components/common/AudioRecorder';
 import { InscriptionsPanel } from '../../components/common/InscriptionsPanel';
+import { EmploiDuTemps } from '../../components/common/EmploiDuTemps';
 import { LienInscription } from '../../components/common/LienInscription';
 import {
   Calendar,
@@ -44,11 +45,11 @@ import {
   UserPlus,
 } from 'lucide-react';
 
-type ProfTab = 'devoirs' | 'inscriptions' | 'groupes' | 'annonces';
+type ProfTab = 'planning' | 'devoirs' | 'inscriptions' | 'groupes' | 'annonces';
 
 export const ProfDashboard: React.FC = () => {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<ProfTab>('devoirs');
+  const [activeTab, setActiveTab] = useState<ProfTab>('planning');
   const [loading, setLoading] = useState(true);
 
   // Données de l'enseignante et globales
@@ -719,6 +720,7 @@ export const ProfDashboard: React.FC = () => {
       ───────────────────────────────────────────────────────────────────── */}
       <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
         {[
+          { id: 'planning', label: 'Emploi du temps', icon: Calendar, badge: mesGroupes.length },
           { id: 'devoirs', label: 'Devoirs', icon: BookCheck, badge: filteredDevoirs.length },
           { id: 'inscriptions', label: 'Élèves & comptes', icon: Users, badge: tousLesEleves.length },
           { id: 'groupes', label: 'Groupes & Zoom', icon: Layers, badge: tousLesGroupes.length },
@@ -751,6 +753,19 @@ export const ProfDashboard: React.FC = () => {
       {/* ─────────────────────────────────────────────────────────────────────
           3. ONGLET : DEVOIRS DONNÉS & NOUVEAUX DEVOIRS
       ───────────────────────────────────────────────────────────────────── */}
+      {/* Emploi du temps de la semaine : les groupes rangés par jour et par heure */}
+      {activeTab === 'planning' && (
+        <EmploiDuTemps
+          groupes={mesGroupes}
+          eleves={mesEleves}
+          onDevoir={(id) => {
+            setDevoirGroupeId(id);
+            setIsAddDevoirModalOpen(true);
+          }}
+          onCreerGroupe={handleOpenCreateGroupeModal}
+        />
+      )}
+
       {activeTab === 'devoirs' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
