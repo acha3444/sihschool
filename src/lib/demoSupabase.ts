@@ -99,6 +99,7 @@ const UNIQUE_KEYS: Record<string, string[]> = {
 const DEFAULTS: Record<string, () => Row> = {
   devoir_rendus: () => ({ statut: 'en_attente', duree_secondes: 0, commentaire_prof: null, corrige_le: null }),
   annonces: () => ({ publiee_le: today() }),
+  devoirs: () => ({ bareme: 20, audio_consigne: null, date_limite: null }),
   progressions: () => ({ formation: 'nourania', lecon_actuelle: 1, mis_a_jour_le: nowIso() }),
   eleves: () => ({ type: 'enfant', parent_id: null, compte_id: null, groupe_id: null, notes_admin: null }),
   groupes: () => ({

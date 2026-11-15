@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { baremeDe, couleurNote, formatNote, moyenne, sur20 } from '../../lib/notes';
 import { supabase } from '../../lib/supabase';
 import { Eleve, Groupe, Seance, Presence, Progression, Devoir, DevoirRendu, Appreciation, Paiement, Annonce } from '../../types/database';
 import { AudioRecorder } from '../common/AudioRecorder';
@@ -52,6 +53,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const [rendus, setRendus] = useState<Record<string, DevoirRendu>>({});
   const [tempAudio, setTempAudio] = useState<Record<string, { base64: string; duration: number }>>({});
   const [tempCommentaire, setTempCommentaire] = useState<Record<string, string>>({});
+  const [tempTexte, setTempTexte] = useState<Record<string, string>>({});
   const [submittingDevoirId, setSubmittingDevoirId] = useState<string | null>(null);
   const [isReRecording, setIsReRecording] = useState<Record<string, boolean>>({});
 
@@ -90,8 +92,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   // Envoyer un enregistrement audio pour un devoir
   const handleSubmitAudioRendu = async (devoirId: string) => {
     const audioData = tempAudio[devoirId];
-    if (!audioData || !audioData.base64) {
-      alert('Veuillez d\'abord enregistrer votre note vocale avant d\'envoyer.');
+    const texte = (tempTexte[devoirId] || '').trim();
+    if (!audioData?.base64 && !texte) {
+      alert('Enregistrez un vocal ou écrivez votre réponse avant d\'envoyer.');
       return;
     }
 
@@ -103,8 +106,9 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           {
             devoir_id: devoirId,
             eleve_id: eleve.id,
-            audio_url: audioData.base64,
-            duree_secondes: audioData.duration || 5,
+            audio_url: audioData?.base64 || null,
+            texte_rendu: texte || null,
+            duree_secondes: audioData?.duration || 0,
             commentaire_eleve: tempCommentaire[devoirId] || null,
             statut: 'en_attente',
           },
@@ -124,6 +128,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
           delete next[devoirId];
           return next;
         });
+        setTempTexte((prev) => ({ ...prev, [devoirId]: '' }));
       }
     } catch (err: any) {
       alert('Erreur lors de l\'envoi du devoir : ' + (err.message || 'Problème de connexion'));
@@ -343,16 +348,35 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
       {/* TAB: DEVOIRS AVEC NOTE VOCALE */}
       {activeTab === 'devoirs' && (
         <div className="space-y-6">
+          {/* Moyenne de l'élève */}
+          {(() => {
+            // moyenne ramenée sur 20 (chaque devoir peut avoir son propre barème)
+            const notes = Object.values(rendus)
+              .filter((r) => r && r.note !== null && r.note !== undefined)
+              .map((r) => sur20(r.note, devoirs.find((d) => d.id === r.devoir_id)?.bareme));
+            const m = moyenne(notes);
+            if (m === null) return null;
+            return (
+              <div className="cloud-card p-5 flex items-center justify-between gap-4 border-2 border-[#FFE15C]">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-[#8C6D00]">Moyenne</p>
+                  <p className="text-sm font-bold text-[#4A5487]">Sur {notes.length} devoir{notes.length > 1 ? 's' : ''} noté{notes.length > 1 ? 's' : ''}</p>
+                </div>
+                <span className={`text-3xl font-black px-4 py-1.5 rounded-2xl ${couleurNote(m)}`}>{formatNote(m)}<span className="text-base font-bold">/20</span></span>
+              </div>
+            );
+          })()}
+
           {/* Devoirs à faire */}
           <div className="cloud-card p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#CDBDF2]/40 pb-3">
               <div>
                 <h3 className="text-lg md:text-xl font-black text-[#1B2A7A] flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#1B2A7A]" />
-                  Devoirs & Récitations vocales
+                  Devoirs
                 </h3>
                 <p className="text-xs text-[#4A5487] font-semibold">
-                  Écoutez les consignes et enregistrez votre récitation pour l'envoyer à votre enseignante.
+                  Répondez à l'oral (vocal) ou à l'écrit, puis envoyez votre réponse à votre enseignante.
                 </p>
               </div>
               <span className="badge-lavender text-xs font-black uppercase">
@@ -423,8 +447,14 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <span className="text-xs font-black text-[#1E7E44] flex items-center gap-1.5">
                                 <CheckCircle2 className="w-4 h-4 text-[#1E7E44]" />
-                                Récitation envoyée le {formatDate(rendu.created_at)}
+                                {rendu.audio_url || rendu.texte_rendu ? `Réponse envoyée le ${formatDate(rendu.created_at)}` : "Noté par l'enseignante"}
                               </span>
+
+                              {rendu.note !== null && rendu.note !== undefined && (
+                                <span className={`text-sm font-black px-3 py-0.5 rounded-full ${couleurNote(sur20(rendu.note, d.bareme))}`}>
+                                  Note : {formatNote(rendu.note)}/{formatNote(baremeDe(d.bareme))}
+                                </span>
+                              )}
 
                               {/* Statut de la correction */}
                               {rendu.statut === 'valide' && (
@@ -444,12 +474,22 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               )}
                             </div>
 
+                            {/* Réponse écrite envoyée */}
+                            {rendu.texte_rendu && (
+                              <div className="p-3 rounded-xl bg-white border border-[#86EFAC]">
+                                <p className="text-xs font-black text-[#1E7E44] mb-1">Votre réponse écrite :</p>
+                                <p className="text-sm text-[#1B2A7A] whitespace-pre-wrap">{rendu.texte_rendu}</p>
+                              </div>
+                            )}
+
                             {/* Lecteur de son propre enregistrement */}
-                            <AudioPlayer
-                              src={rendu.audio_url}
-                              label="Votre note vocale enregistrée"
-                              className="bg-white border-[#86EFAC]"
-                            />
+                            {rendu.audio_url && (
+                              <AudioPlayer
+                                src={rendu.audio_url}
+                                label="Votre note vocale enregistrée"
+                                className="bg-white border-[#86EFAC]"
+                              />
+                            )}
 
                             {/* Commentaire de la prof */}
                             {rendu.commentaire_prof && (
@@ -472,7 +512,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                                 className="text-xs font-bold text-[#1B2A7A] hover:underline flex items-center gap-1"
                               >
                                 <Mic className="w-3.5 h-3.5" />
-                                <span>Envoyer une nouvelle prise vocale</span>
+                                <span>{rendu.audio_url || rendu.texte_rendu ? 'Modifier ma réponse' : 'Envoyer ma réponse'}</span>
                               </button>
                             </div>
                           </div>
@@ -482,7 +522,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-black text-[#1B2A7A] flex items-center gap-1.5">
                                 <Mic className="w-4 h-4 text-[#1B2A7A]" />
-                                <span>Votre enregistrement vocal :</span>
+                                <span>Votre réponse (vocal et/ou écrit) :</span>
                               </p>
                               {reRecording && (
                                 <button
@@ -512,8 +552,18 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               }}
                             />
 
-                            {/* Bouton d'envoi lorsque l'audio est prêt */}
-                            {hasRecorded && (
+                            {/* Réponse écrite */}
+                            <textarea
+                              value={tempTexte[d.id] || ''}
+                              onChange={(e) => setTempTexte((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                              placeholder="Ou écrivez votre réponse ici…"
+                              rows={4}
+                              dir="auto"
+                              className="w-full p-3 rounded-2xl bg-white border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-sm font-semibold text-[#1B2A7A]"
+                            />
+
+                            {/* Bouton d'envoi lorsque le vocal ou l'écrit est prêt */}
+                            {(hasRecorded || (tempTexte[d.id] || '').trim().length > 0) && (
                               <button
                                 type="button"
                                 onClick={() => handleSubmitAudioRendu(d.id)}
@@ -524,7 +574,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                                 <span>
                                   {isSubmitting
                                     ? 'Envoi en cours...'
-                                    : 'Envoyer ma récitation à la maîtresse'}
+                                    : 'Envoyer ma réponse à la maîtresse'}
                                 </span>
                               </button>
                             )}
@@ -561,15 +611,18 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                       <p className="text-xs text-gray-600 line-clamp-2">{d.consigne}</p>
 
                       {rendu && (
-                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                        <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
                           <span className="text-[11px] text-[#1E7E44] font-bold">
-                            ✓ Récitation transmise
+                            {rendu.audio_url || rendu.texte_rendu ? '✓ Réponse transmise' : '✓ Noté'}
                           </span>
-                          <AudioPlayer
-                            src={rendu.audio_url}
-                            label="Réécouter"
-                            className="!p-1.5 !text-xs"
-                          />
+                          {rendu.note !== null && rendu.note !== undefined && (
+                            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${couleurNote(sur20(rendu.note, d.bareme))}`}>
+                              {formatNote(rendu.note)}/{formatNote(baremeDe(d.bareme))}
+                            </span>
+                          )}
+                          {rendu.audio_url && (
+                            <AudioPlayer src={rendu.audio_url} label="Réécouter" className="!p-1.5 !text-xs" />
+                          )}
                         </div>
                       )}
                     </div>

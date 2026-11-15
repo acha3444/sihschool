@@ -18,6 +18,9 @@ import { AudioPlayer } from '../../components/common/AudioPlayer';
 import { AudioRecorder } from '../../components/common/AudioRecorder';
 import { InscriptionsPanel } from '../../components/common/InscriptionsPanel';
 import { EmploiDuTemps } from '../../components/common/EmploiDuTemps';
+import { CorrectionEleve } from '../../components/prof/CorrectionEleve';
+import { NotesPanel } from '../../components/prof/NotesPanel';
+import { BAREMES, baremeDe, couleurNote, formatNote, sur20 } from '../../lib/notes';
 import { LienInscription } from '../../components/common/LienInscription';
 import {
   Calendar,
@@ -45,7 +48,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 
-type ProfTab = 'planning' | 'devoirs' | 'inscriptions' | 'groupes' | 'annonces';
+type ProfTab = 'planning' | 'devoirs' | 'notes' | 'inscriptions' | 'groupes' | 'annonces';
 
 export const ProfDashboard: React.FC = () => {
   const { profile } = useAuth();
@@ -104,6 +107,7 @@ export const ProfDashboard: React.FC = () => {
   const [devoirConsigne, setDevoirConsigne] = useState('');
   const [devoirAudioConsigne, setDevoirAudioConsigne] = useState('');
   const [devoirDateLimite, setDevoirDateLimite] = useState('');
+  const [devoirBareme, setDevoirBareme] = useState('20');
 
   // Modal Annonce pour Groupe
   const [isAddAnnonceModalOpen, setIsAddAnnonceModalOpen] = useState(false);
@@ -380,6 +384,11 @@ export const ProfDashboard: React.FC = () => {
   const handleCreateDevoir = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!devoirGroupeId || !devoirTitre || !devoirConsigne) return;
+    const bareme = Number(devoirBareme.replace(',', '.'));
+    if (!Number.isFinite(bareme) || bareme <= 0 || bareme > 1000) {
+      alert('Le barème doit être un nombre positif (ex. 20, 10, 5).');
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('devoirs')
@@ -389,6 +398,7 @@ export const ProfDashboard: React.FC = () => {
           consigne: devoirConsigne.trim(),
           audio_consigne: devoirAudioConsigne || null,
           date_limite: devoirDateLimite || null,
+          bareme,
         })
         .select('*, groupe:groupes(*)')
         .single();
@@ -400,10 +410,25 @@ export const ProfDashboard: React.FC = () => {
         setDevoirConsigne('');
         setDevoirAudioConsigne('');
         setDevoirDateLimite('');
+        setDevoirBareme('20');
       }
     } catch (err: any) {
       alert('Erreur ajout devoir : ' + err.message);
     }
+  };
+
+  // Changer le barème d'un devoir (les notes déjà données ne doivent pas le dépasser)
+  const handleChangeBareme = async (devoir: Devoir) => {
+    const actuel = baremeDe(devoir.bareme);
+    const saisie = prompt(`Ce devoir est noté sur combien ? (actuellement sur ${actuel})`, String(actuel));
+    if (saisie === null) return;
+    const bareme = Number(saisie.replace(',', '.'));
+    if (!Number.isFinite(bareme) || bareme <= 0 || bareme > 1000) return alert('Entrez un nombre positif (ex. 20, 10, 5).');
+    const noteMax = Math.max(0, ...rendus.filter((r) => r.devoir_id === devoir.id && r.note !== null && r.note !== undefined).map((r) => Number(r.note)));
+    if (noteMax > bareme) return alert(`Une note déjà donnée (${formatNote(noteMax)}) dépasse ${bareme}. Modifiez-la d'abord.`);
+    const { error } = await supabase.from('devoirs').update({ bareme }).eq('id', devoir.id);
+    if (error) return alert('Erreur : ' + error.message);
+    setDevoirs((prev) => prev.map((d) => (d.id === devoir.id ? { ...d, bareme } : d)));
   };
 
   // Corriger un devoir rendu par un élève
@@ -722,6 +747,7 @@ export const ProfDashboard: React.FC = () => {
         {[
           { id: 'planning', label: 'Emploi du temps', icon: Calendar, badge: mesGroupes.length },
           { id: 'devoirs', label: 'Devoirs', icon: BookCheck, badge: filteredDevoirs.length },
+          { id: 'notes', label: 'Notes', icon: Award, badge: undefined },
           { id: 'inscriptions', label: 'Élèves & comptes', icon: Users, badge: tousLesEleves.length },
           { id: 'groupes', label: 'Groupes & Zoom', icon: Layers, badge: tousLesGroupes.length },
           { id: 'annonces', label: 'Annonces', icon: Megaphone, badge: annonces.length },
@@ -765,6 +791,9 @@ export const ProfDashboard: React.FC = () => {
           onCreerGroupe={handleOpenCreateGroupeModal}
         />
       )}
+
+      {/* Notes et moyennes par groupe */}
+      {activeTab === 'notes' && <NotesPanel groupes={mesGroupes} eleves={tousLesEleves} devoirs={devoirs} rendus={rendus} />}
 
       {activeTab === 'devoirs' && (
         <div className="space-y-6">
@@ -875,6 +904,14 @@ export const ProfDashboard: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Barème du devoir */}
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-[#4A5487]">
+                      <span className="px-2 py-0.5 rounded-full bg-[#F3EEFF] border border-[#CDBDF2] text-[#5B3FA8] font-black">Noté sur {formatNote(baremeDe(devoir.bareme))}</span>
+                      <button type="button" onClick={() => handleChangeBareme(devoir)} className="underline hover:text-[#1B2A7A]">
+                        Modifier
+                      </button>
+                    </div>
+
                     {/* Bouton pour afficher les récitations reçues */}
                     <button
                       type="button"
@@ -887,10 +924,10 @@ export const ProfDashboard: React.FC = () => {
                     >
                       <span className="flex items-center gap-1.5">
                         <BookCheck className="w-4 h-4" />
-                        <span>Récitations des élèves</span>
+                        <span>Réponses & notes des élèves</span>
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-white text-[#1B2A7A] text-[10px] font-extrabold">
-                        {rendusDuDevoir.length} / {elevesDuGroupe.length} reçue(s)
+                        {rendusDuDevoir.filter((r) => r.audio_url || r.texte_rendu).length} / {elevesDuGroupe.length} reçue(s)
                       </span>
                     </button>
 
@@ -898,10 +935,10 @@ export const ProfDashboard: React.FC = () => {
                     {isRendusOpen && (
                       <div className="pt-2 border-t border-[#CDBDF2]/40 space-y-3">
                         <h4 className="text-xs font-black text-[#1B2A7A] uppercase tracking-wide">
-                          Écoute & Correction des élèves ({elevesDuGroupe.length}) :
+                          Correction & notes des élèves ({elevesDuGroupe.length}) :
                         </h4>
 
-                        <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                        <div className="space-y-2.5 max-h-[32rem] overflow-y-auto pr-1">
                           {elevesDuGroupe.map((el) => {
                             const rendu = rendusDuDevoir.find((r) => r.eleve_id === el.id);
 
@@ -915,6 +952,11 @@ export const ProfDashboard: React.FC = () => {
                                     {el.prenom} {el.nom}
                                   </span>
 
+                                  {rendu && rendu.note !== null && rendu.note !== undefined && (
+                                    <span className={`ml-auto mr-1.5 text-[11px] font-black px-2 py-0.5 rounded-full ${couleurNote(sur20(rendu.note, devoir.bareme))}`}>
+                                      {formatNote(rendu.note)}/{formatNote(baremeDe(devoir.bareme))}
+                                    </span>
+                                  )}
                                   {rendu ? (
                                     <span
                                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -938,87 +980,14 @@ export const ProfDashboard: React.FC = () => {
                                   )}
                                 </div>
 
-                                {rendu ? (
-                                  <div className="space-y-2 pt-1">
-                                    {/* Lecteur audio de la note de l'élève */}
-                                    <AudioPlayer
-                                      src={rendu.audio_url}
-                                      label={`Récitation de ${el.prenom}`}
-                                      className="!p-2 bg-[#F9FAFB]"
-                                    />
-
-                                    {/* Formulaire de correction / retour enseignant */}
-                                    <div className="space-y-1.5 pt-1">
-                                      <div className="flex items-center gap-1.5">
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setCorrectionStatut((prev) => ({
-                                              ...prev,
-                                              [rendu.id]: 'valide',
-                                            }))
-                                          }
-                                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                            (correctionStatut[rendu.id] || rendu.statut) === 'valide'
-                                              ? 'bg-[#1E7E44] text-white shadow-xs'
-                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                          }`}
-                                        >
-                                          Valider 🌟
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setCorrectionStatut((prev) => ({
-                                              ...prev,
-                                              [rendu.id]: 'a_reviser',
-                                            }))
-                                          }
-                                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                            (correctionStatut[rendu.id] || rendu.statut) === 'a_reviser'
-                                              ? 'bg-[#854D0E] text-white shadow-xs'
-                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                          }`}
-                                        >
-                                          À réviser 🔄
-                                        </button>
-                                      </div>
-
-                                      <div className="flex items-center gap-1.5">
-                                        <input
-                                          type="text"
-                                          value={
-                                            correctionCommentaire[rendu.id] !== undefined
-                                              ? correctionCommentaire[rendu.id]
-                                              : rendu.commentaire_prof || ''
-                                          }
-                                          onChange={(e) =>
-                                            setCorrectionCommentaire((prev) => ({
-                                              ...prev,
-                                              [rendu.id]: e.target.value,
-                                            }))
-                                          }
-                                          placeholder="Remarque pour l'élève (prononciation, encouragements)..."
-                                          className="flex-1 min-h-[34px] px-2.5 py-1 rounded-lg border border-[#CDBDF2] text-xs text-[#1B2A7A]"
-                                        />
-
-                                        <button
-                                          type="button"
-                                          onClick={() => handleSaveCorrection(rendu.id)}
-                                          disabled={savingCorrectionId === rendu.id}
-                                          className="btn-pill-sun text-[10px] font-bold !min-h-[34px] px-3 flex-shrink-0"
-                                        >
-                                          {savingCorrectionId === rendu.id ? '...' : 'Enregistrer'}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-[11px] text-gray-400 italic">
-                                    L'élève n'a pas encore enregistré sa récitation.
-                                  </p>
-                                )}
+                                <CorrectionEleve
+                                  key={rendu?.id || el.id}
+                                  eleve={el}
+                                  devoirId={devoir.id}
+                                  bareme={baremeDe(devoir.bareme)}
+                                  rendu={rendu}
+                                  onSaved={(r) => setRendus((prev) => [r, ...prev.filter((x) => x.id !== r.id)])}
+                                />
                               </div>
                             );
                           })}
@@ -1509,6 +1478,32 @@ export const ProfDashboard: React.FC = () => {
                   className="w-full p-3 rounded-xl border border-[#CDBDF2] text-xs sm:text-sm text-[#1B2A7A]"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1B2A7A] mb-1">Noté sur</label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {BAREMES.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setDevoirBareme(String(b))}
+                      className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black border ${devoirBareme === String(b) ? 'bg-[#FFE15C] border-[#FFE15C] text-[#1B2A7A]' : 'bg-white border-[#CDBDF2] text-[#4A5487]'}`}
+                    >
+                      /{b}
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-[#4A5487] ml-1">ou</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={BAREMES.map(String).includes(devoirBareme) ? '' : devoirBareme}
+                    onChange={(e) => setDevoirBareme(e.target.value || '20')}
+                    placeholder="autre"
+                    aria-label="Barème personnalisé"
+                    className="w-20 min-h-[38px] px-2 rounded-xl border border-[#CDBDF2] text-xs font-black text-center text-[#1B2A7A]"
+                  />
+                </div>
               </div>
 
               <div>

@@ -86,6 +86,7 @@ export interface Devoir {
   consigne: string;
   audio_consigne?: string | null;
   date_limite?: string | null;
+  bareme?: number | null;
   created_at: string;
   groupe?: Groupe | null;
 }
@@ -94,7 +95,9 @@ export interface DevoirRendu {
   id: string;
   devoir_id: string;
   eleve_id: string;
-  audio_url: string;
+  audio_url?: string | null;
+  texte_rendu?: string | null;
+  note?: number | null;
   duree_secondes: number;
   commentaire_eleve?: string | null;
   statut: DevoirRenduStatut;
