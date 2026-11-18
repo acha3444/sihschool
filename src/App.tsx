@@ -72,7 +72,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#A9D8F5] via-[#BAE2F8] to-[#CDE9FA] text-[#1B2A7A]">
         <RefreshCw className="w-10 h-10 animate-spin mb-3 text-[#1B2A7A]" />
-        <p className="font-baloo font-bold text-base">Chargement de Sihscool...</p>
+        <p className="font-baloo font-bold text-base">Chargement de SihSchool...</p>
       </div>
     );
   }

@@ -396,7 +396,7 @@ export const AdminDashboard: React.FC = () => {
         eleve_id: newEleve.id,
         formation: 'nourania',
         lecon_actuelle: 1,
-        commentaire: 'Bienvenue à Sihscool ! Première leçon démarrée.',
+        commentaire: 'Bienvenue à SihSchool ! Première leçon démarrée.',
       });
 
       // Rafraîchir les données
@@ -437,7 +437,7 @@ export const AdminDashboard: React.FC = () => {
   const handleCopyInvitationMessage = () => {
     if (!createdAccountResult) return;
     const origin = window.location.origin;
-    const msg = `Assalamu alaykum ${createdAccountResult.prenom} ! L'inscription de ${createdAccountResult.elevePrenom} à l'école Sihscool est validée.\n\nAccès à la plateforme : ${origin}/login\nIdentifiant : ${createdAccountResult.email}\nMot de passe temporaire : ${createdAccountResult.tempPassword}\n\n(Il vous sera demandé de choisir votre propre mot de passe à votre première connexion).\n\nÀ très vite sur Sihscool !`;
+    const msg = `Assalamu alaykum ${createdAccountResult.prenom} ! L'inscription de ${createdAccountResult.elevePrenom} à l'école SihSchool est validée.\n\nAccès à la plateforme : ${origin}/login\nIdentifiant : ${createdAccountResult.email}\nMot de passe temporaire : ${createdAccountResult.tempPassword}\n\n(Il vous sera demandé de choisir votre propre mot de passe à votre première connexion).\n\nÀ très vite sur SihSchool !`;
     navigator.clipboard.writeText(msg);
     setCopiedInvite(true);
     setTimeout(() => setCopiedInvite(false), 3000);
@@ -603,7 +603,7 @@ export const AdminDashboard: React.FC = () => {
   const handleCopyResetWhatsApp = () => {
     if (!resetModalResult) return;
     const origin = window.location.origin;
-    const msg = `Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école Sihscool :\n🌐 Lien de connexion : ${origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur Sihscool !`;
+    const msg = `Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école SihSchool :\n🌐 Lien de connexion : ${origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur SihSchool !`;
     navigator.clipboard.writeText(msg);
     setCopiedResetMsg(true);
     setTimeout(() => setCopiedResetMsg(false), 3000);
@@ -1380,7 +1380,7 @@ export const AdminDashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const msg = `Salam aleykoum ${createdProfResult.prenom},\n\nVoici vos accès à votre Espace Enseignante Sihscool :\n🔗 Lien : https://app.sihschool.com\n📧 Identifiant : ${createdProfResult.email}\n🔑 Mot de passe temporaire : ${createdProfResult.tempPassword}\n\nVous pourrez définir votre mot de passe personnel dès votre première connexion.`;
+                    const msg = `Salam aleykoum ${createdProfResult.prenom},\n\nVoici vos accès à votre Espace Enseignante SihSchool :\n🔗 Lien : https://app.sihschool.com\n📧 Identifiant : ${createdProfResult.email}\n🔑 Mot de passe temporaire : ${createdProfResult.tempPassword}\n\nVous pourrez définir votre mot de passe personnel dès votre première connexion.`;
                     navigator.clipboard.writeText(msg);
                     setCopiedProfInvite(true);
                     setTimeout(() => setCopiedProfInvite(false), 2500);
@@ -1724,7 +1724,7 @@ export const AdminDashboard: React.FC = () => {
                 Message à transmettre à {resetModalResult.prenom} :
               </label>
               <div className="p-3.5 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] text-xs text-[#1B2A7A] font-mono whitespace-pre-wrap leading-relaxed select-all">
-                {`Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école Sihscool :\n🌐 Lien de connexion : ${window.location.origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur Sihscool !`}
+                {`Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école SihSchool :\n🌐 Lien de connexion : ${window.location.origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur SihSchool !`}
               </div>
             </div>
 
@@ -1751,7 +1751,7 @@ export const AdminDashboard: React.FC = () => {
               {resetModalResult.telephone && (
                 <a
                   href={`https://wa.me/${resetModalResult.telephone.replace(/\s+/g, '').replace('+', '')}?text=${encodeURIComponent(
-                    `Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école Sihscool :\n🌐 Lien de connexion : ${window.location.origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur Sihscool !`
+                    `Assalamu alaykum ${resetModalResult.prenom} !\n\nVoici vos nouveaux identifiants pour vous connecter à l'école SihSchool :\n🌐 Lien de connexion : ${window.location.origin}/login\n📧 Identifiant : ${resetModalResult.email}\n🔑 Mot de passe temporaire : ${resetModalResult.tempPassword}\n\n(Dès votre première connexion, la plateforme vous demandera de choisir votre propre mot de passe personnel).\n\nÀ très vite sur SihSchool !`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

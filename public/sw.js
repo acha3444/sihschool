@@ -1,5 +1,5 @@
-// Service Worker for Sihscool PWA
-const CACHE_NAME = 'sihscool-v2';
+// Service Worker for SihSchool PWA
+const CACHE_NAME = 'sihscool-v3';
 
 const STATIC_ASSETS = [
   '/',

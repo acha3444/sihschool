@@ -97,7 +97,7 @@ export const LoginPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <img
             src="/logo.svg"
-            alt="Logo officiel de l'école Sihscool"
+            alt="Logo officiel de l'école SihSchool"
             className="h-12 w-auto drop-shadow-sm"
           />
         </div>
@@ -112,7 +112,7 @@ export const LoginPage: React.FC = () => {
           {/* Logo / illustration header */}
           <div className="text-center space-y-2">
             <h1 className="font-baloo font-extrabold text-2xl sm:text-3xl text-[#1B2A7A] leading-tight">
-              Bienvenue sur <span className="underline decoration-[#FFE15C] decoration-wavy">Sihscool</span>
+              Bienvenue sur <span className="underline decoration-[#FFE15C] decoration-wavy">SihSchool</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#4A5487] font-baloo font-semibold">
               Espace de suivi pour l'apprentissage de l'arabe et de la méthode Nourania.
@@ -281,7 +281,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Footer minimaliste et propre sans mention CNIL */}
       <footer className="text-center py-4 text-xs text-[#4A5487] font-baloo font-semibold">
-        © {new Date().getFullYear()} Sihscool · Institut d'apprentissage de l'arabe en douceur
+        © {new Date().getFullYear()} SihSchool · Institut d'apprentissage de l'arabe en douceur
       </footer>
     </div>
   );

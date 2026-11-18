@@ -24,7 +24,7 @@ type Identifiants = {
 };
 
 const messageIdentifiants = (r: Identifiants) =>
-  `Assalamu alaykum ${r.prenom} !\n\nVoici vos identifiants pour l'école Sihscool :\n🌐 Lien : ${window.location.origin}/login\n📧 Identifiant : ${r.email}\n🔑 Mot de passe temporaire : ${r.tempPassword}\n\n(À la première connexion, vous choisirez votre propre mot de passe.)\n\nÀ très vite sur Sihscool !`;
+  `Assalamu alaykum ${r.prenom} !\n\nVoici vos identifiants pour l'école SihSchool :\n🌐 Lien : ${window.location.origin}/login\n📧 Identifiant : ${r.email}\n🔑 Mot de passe temporaire : ${r.tempPassword}\n\n(À la première connexion, vous choisirez votre propre mot de passe.)\n\nÀ très vite sur SihSchool !`;
 
 const inputClass =
   'w-full py-2.5 px-4 rounded-2xl bg-white border-2 border-[#CDBDF2] focus:border-[#FFE15C] focus:outline-none text-sm font-bold text-[#1B2A7A] min-h-[44px]';

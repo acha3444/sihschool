@@ -93,7 +93,7 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* Brand Logo */}
         <div className="flex items-center gap-3 min-w-0">
-          <img src="/logo.svg" alt="Logo Sihscool" className="h-9 sm:h-10 w-auto drop-shadow-sm shrink-0" />
+          <img src="/logo.svg" alt="Logo SihSchool" className="h-9 sm:h-10 w-auto drop-shadow-sm shrink-0" />
 
           {/* Role Badge */}
           <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-baloo font-bold border border-[#CDBDF2] bg-[#FFFFFF] text-[#1B2A7A] shadow-xs">

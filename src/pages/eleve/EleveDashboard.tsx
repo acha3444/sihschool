@@ -191,7 +191,7 @@ export const EleveDashboard: React.FC = () => {
             Espace Élève
           </h1>
           <p className="text-base text-[#1B2A7A]/80 font-medium">
-            Votre parcours d'apprentissage à l'école Sihscool
+            Votre parcours d'apprentissage à l'école SihSchool
           </p>
         </div>
       </div>

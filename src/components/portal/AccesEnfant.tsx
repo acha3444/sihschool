@@ -72,7 +72,7 @@ export const AccesEnfant: React.FC<{ enfant: Eleve; onChange: (patch: Partial<El
   };
 
   const message = resultat
-    ? `Ton accès Sihscool 📚\nSite : ${window.location.origin}\nIdentifiant : ${resultat.identifiant}\nMot de passe : ${resultat.motDePasse}`
+    ? `Ton accès SihSchool 📚\nSite : ${window.location.origin}\nIdentifiant : ${resultat.identifiant}\nMot de passe : ${resultat.motDePasse}`
     : '';
 
   return (

@@ -184,7 +184,7 @@ export const FamilleDashboard: React.FC = () => {
         <Users className="w-12 h-12 text-[#1B2A7A] mx-auto opacity-60" />
         <h3 className="text-xl font-black text-[#1B2A7A]">Bienvenue dans votre Espace Famille</h3>
         <p className="text-base text-gray-700">
-          Aucun profil d'élève n'est encore rattaché à votre compte. Veuillez contacter l'administration de l'école Sihscool pour finaliser votre inscription.
+          Aucun profil d'élève n'est encore rattaché à votre compte. Veuillez contacter l'administration de l'école SihSchool pour finaliser votre inscription.
         </p>
         <a
           href="https://wa.me/33757589112"
@@ -209,7 +209,7 @@ export const FamilleDashboard: React.FC = () => {
             Espace Famille
           </h1>
           <p className="text-base text-[#1B2A7A]/80 font-medium">
-            Suivi pédagogique de vos enfants à l'école Sihscool
+            Suivi pédagogique de vos enfants à l'école SihSchool
           </p>
         </div>
 

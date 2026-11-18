@@ -1,15 +1,15 @@
-# Sihscool · Plateforme Éducative & École d'Arabe
+# SihSchool · Plateforme Éducative & École d'Arabe
 
-> Sihscool est un institut et une plateforme d'enseignement de la langue arabe littéraire et de la méthode Nourania destinée aux enfants et à leurs familles. Conçue selon une approche bienveillante, illustrée et interactive comme un livre d'images vivant.
+> SihSchool est un institut et une plateforme d'enseignement de la langue arabe littéraire et de la méthode Nourania destinée aux enfants et à leurs familles. Conçue selon une approche bienveillante, illustrée et interactive comme un livre d'images vivant.
 
 ## Identité & Éditeur
-- **Nom du service** : Sihscool
+- **Nom du service** : SihSchool
 - **Vocation** : Cours d'arabe littéraire et méthode Nourania en direct par visioconférence sur Zoom (séances interactives hebdomadaires de 1h30 par semaine en petits groupes bienveillants, tajwîd, devoirs de récitation vocale).
 - **Format d'enseignement** : 100 % en visioconférence Zoom en direct avec professeur qualifié (1h30/semaine) + plateforme numérique d'accompagnement.
 - **Public cible** : Élèves (enfants de 5 à 15 ans), Parents/Responsables légaux, Enseignants et Direction pédagogique.
 - **Directeur de la publication** : Cheikh Mohammed Al-Mansour
-- **Contact officiel** : direction@sihscool.fr
-- **Délégué à la Protection des Données (DPO)** : dpo@sihscool.fr
+- **Contact officiel** : contact@sihschool.com
+- **Délégué à la Protection des Données (DPO)** : contact@sihschool.com
 - **Localisation** : France / Union Européenne
 
 ## Conformité Légale & RGPD (Protection des Données Personnelles)

@@ -18,10 +18,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
-        console.log('Sihscool PWA Service Worker registered:', reg.scope);
+        console.log('SihSchool PWA Service Worker registered:', reg.scope);
       })
       .catch((err) => {
-        console.warn('Sihscool Service Worker registration failed:', err);
+        console.warn('SihSchool Service Worker registration failed:', err);
       });
   });
 }

@@ -15,7 +15,7 @@ export const LienInscription: React.FC<{ groupe: Groupe; onChange?: () => void }
 
   if (!groupe.code_inscription) return null;
   const url = `${window.location.origin}/inscription/${groupe.code_inscription}`;
-  const message = `Assalamu alaykum ! Pour inscrire votre enfant au cours « ${groupe.nom} » (${groupe.jour} ${groupe.heure}) à l'école Sihscool, créez votre compte ici :\n${url}`;
+  const message = `Assalamu alaykum ! Pour inscrire votre enfant au cours « ${groupe.nom} » (${groupe.jour} ${groupe.heure}) à l'école SihSchool, créez votre compte ici :\n${url}`;
 
   const copier = () => {
     navigator.clipboard.writeText(message);

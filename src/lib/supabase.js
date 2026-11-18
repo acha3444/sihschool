@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { demoSupabase, installDemoApi, resetDemo } from './demoSupabase';
+import { demoSupabase, installDemoApi, resetDemo, loadTikTokDemo } from './demoSupabase';
 
 // Mode démo local (`npm run demo`) : base en mémoire, aucune connexion à Supabase
 export const isDemoMode = import.meta.env.VITE_DEMO === '1';
@@ -14,6 +14,8 @@ if (isDemoMode) {
   installDemoApi();
   // ?reset dans l'adresse : remet la démo à zéro
   if (new URLSearchParams(window.location.search).has('reset')) resetDemo();
+  // ?tiktok dans l'adresse : charge une famille fictive prête à filmer (famille@demo.test / demo1234)
+  if (new URLSearchParams(window.location.search).has('tiktok')) loadTikTokDemo();
 }
 
 export const supabase = isDemoMode

@@ -32,5 +32,5 @@
   </g>
 
   <!-- Brand Text -->
-  <text x="256" y="372" font-family="'Baloo Bhaijaan 2', 'Baloo 2', cursive, sans-serif" font-size="44" font-weight="800" fill="#1B2A7A" text-anchor="middle" letter-spacing="-1">Sihscool</text>
+  <text x="256" y="372" font-family="'Baloo Bhaijaan 2', 'Baloo 2', cursive, sans-serif" font-size="44" font-weight="800" fill="#1B2A7A" text-anchor="middle" letter-spacing="-1" textLength="220" lengthAdjust="spacingAndGlyphs">SihSchool</text>
 </svg>

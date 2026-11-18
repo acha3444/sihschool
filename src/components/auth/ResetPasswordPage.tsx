@@ -50,7 +50,7 @@ export const ResetPasswordPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <img
             src="/logo.svg"
-            alt="Logo officiel de l'école Sihscool"
+            alt="Logo officiel de l'école SihSchool"
             className="h-12 w-auto drop-shadow-sm"
           />
         </div>
@@ -66,7 +66,7 @@ export const ResetPasswordPage: React.FC = () => {
               Nouveau mot de passe
             </h1>
             <p className="text-xs sm:text-sm text-[#4A5487] font-semibold">
-              Définissez un nouveau mot de passe sécurisé pour votre compte Sihscool.
+              Définissez un nouveau mot de passe sécurisé pour votre compte SihSchool.
             </p>
           </div>
 
@@ -141,7 +141,7 @@ export const ResetPasswordPage: React.FC = () => {
       </main>
 
       <footer className="max-w-4xl mx-auto w-full text-center py-2 text-xs text-[#4A5487]">
-        © {new Date().getFullYear()} Sihscool
+        © {new Date().getFullYear()} SihSchool
       </footer>
     </div>
   );

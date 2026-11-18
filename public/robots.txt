@@ -1,5 +1,5 @@
-# robots.txt for Sihscool - École d'apprentissage de l'arabe et Nourania
-# https://sihscool.fr
+# robots.txt for SihSchool - École d'apprentissage de l'arabe et Nourania
+# https://app.sihschool.com
 
 User-agent: *
 Allow: /
@@ -33,4 +33,4 @@ User-agent: PerplexityBot
 Allow: /
 Allow: /llms.txt
 
-Sitemap: https://sihscool.fr/sitemap.xml
+Sitemap: https://app.sihschool.com/sitemap.xml

@@ -95,7 +95,7 @@ export const InscriptionPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#A9D8F5] via-[#BAE2F8] to-[#CDE9FA] text-[#1B2A7A] flex flex-col p-4 sm:p-6 font-baloo">
       <header className="max-w-4xl mx-auto w-full flex items-center justify-between py-2">
-        <img src="/logo.svg" alt="Logo Sihscool" className="h-12 w-auto drop-shadow-sm" />
+        <img src="/logo.svg" alt="Logo SihSchool" className="h-12 w-auto drop-shadow-sm" />
         <Link to="/login" className="badge-lavender shadow-sm text-xs font-bold">
           Déjà inscrit ? Se connecter
         </Link>
@@ -122,7 +122,7 @@ export const InscriptionPage: React.FC = () => {
           {groupe && (
             <>
               <div className="text-center space-y-2">
-                <h1 className="font-extrabold text-2xl sm:text-3xl leading-tight">Inscription à Sihscool</h1>
+                <h1 className="font-extrabold text-2xl sm:text-3xl leading-tight">Inscription à SihSchool</h1>
                 <div className="inline-flex flex-col items-center gap-1 px-4 py-3 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C]">
                   <span className="font-black text-lg">{groupe.nom}</span>
                   <span className="text-sm font-bold text-[#4A5487] flex items-center gap-1.5">

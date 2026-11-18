@@ -62,6 +62,71 @@ const saveDb = (db: Db) => {
   }
 };
 
+/**
+ * Jeu de données fictif prêt à filmer pour TikTok (espace parent rempli).
+ * Activé avec ?tiktok dans l'adresse. Compte parent : famille@demo.test / demo1234
+ * Tous les noms sont inventés : aucune vraie élève, aucune vraie famille.
+ */
+export const loadTikTokDemo = () => {
+  const db = seed();
+  const created_at = nowIso();
+  const day = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().split('T')[0];
+  const month = new Date().toISOString().slice(0, 7);
+
+  db._users.push(
+    { id: 'u-prof', email: 'siham@demo.test', password: DEMO_PASSWORD },
+    { id: 'u-parent', email: 'famille@demo.test', password: DEMO_PASSWORD },
+  );
+  db.profiles.push(
+    { id: 'u-prof', role: 'prof', prenom: 'Siham', nom: '', telephone: null, doit_changer_mdp: false, created_at },
+    { id: 'u-parent', role: 'parent', prenom: 'Maman', nom: 'Démo', telephone: null, doit_changer_mdp: false, created_at },
+  );
+  db.groupes.push({
+    id: 'g-demo', nom: 'Nourania Enfants - Mercredi', formation: 'nourania', jour: 'Mercredi', heure: '14h00',
+    lien_zoom: 'https://zoom.us/', code_inscription: 'DEMO26', prof_id: 'u-prof', created_at,
+  });
+  db.eleves.push({
+    id: 'e-demo', prenom: 'Yasmine', nom: 'Démo', type: 'enfant', parent_id: 'u-parent', compte_id: null,
+    groupe_id: 'g-demo', date_naissance: null, notes_admin: null, created_at,
+  });
+  db.progressions.push({
+    id: uuid(), eleve_id: 'e-demo', formation: 'nourania', lecon_actuelle: 6,
+    commentaire: 'Lit les syllabes avec les voyelles courtes. Prochaine étape : les voyelles longues.', mis_a_jour_le: created_at, created_at,
+  });
+
+  const devoirs = [
+    { id: 'd-1', titre: 'Les lettres ح et خ', consigne: 'Écoute le modèle de Siham, puis récite : حَ ، خَ ، حُ ، خُ (3 fois).', audio_consigne: '/audio/letters/haa.mp3', date_limite: day(5), note: 19, commentaire_prof: 'Très beau ح, bien soufflé depuis la gorge ! Bravo Yasmine 🌟' },
+    { id: 'd-2', titre: 'Lire le mot بَيْت', consigne: 'Lis le mot بَيْت lettre par lettre, puis en entier.', audio_consigne: null, date_limite: day(-3), note: 18, commentaire_prof: 'Lecture fluide, le يْ est bien posé. Continue comme ça !' },
+    { id: 'd-3', titre: 'Les voyelles courtes', consigne: 'Récite : بَ ، بِ ، بُ ، تَ ، تِ ، تُ', audio_consigne: null, date_limite: day(-10), note: 17, commentaire_prof: 'Les trois voyelles sont bien distinctes. Bravo !' },
+    { id: 'd-4', titre: 'Révision ب ت ث', consigne: 'Montre la lettre et dis son nom : ب ، ت ، ث', audio_consigne: null, date_limite: day(-17), note: 16, commentaire_prof: 'Attention aux points du ث, sinon très bien 👍' },
+  ];
+  devoirs.forEach(({ note, commentaire_prof, ...d }) => {
+    db.devoirs.push({ ...d, groupe_id: 'g-demo', bareme: 20, created_at });
+    db.devoir_rendus.push({
+      id: uuid(), devoir_id: d.id, eleve_id: 'e-demo', audio_url: '/audio/devoirs/student-sample.mp3', texte_rendu: null,
+      note, duree_secondes: 12, commentaire_eleve: null, statut: 'valide', commentaire_prof, corrige_le: created_at, created_at,
+    });
+  });
+
+  db.annonces.push({
+    id: uuid(), titre: 'Cette semaine 🌸', groupe_id: 'g-demo', publiee_le: day(-1), created_at,
+    texte: 'Bravo à tout le groupe ! Mercredi, on attaque les voyelles longues. Pensez à réécouter le modèle avant le cours.',
+  });
+  [-21, -14, -7].forEach((offset, i) => {
+    const seanceId = uuid();
+    db.seances.push({ id: seanceId, groupe_id: 'g-demo', date: day(offset), theme: ['Voyelles courtes', 'Le mot بَيْت', 'ح et خ'][i], created_at });
+    db.presences.push({ id: uuid(), seance_id: seanceId, eleve_id: 'e-demo', statut: 'present', created_at });
+  });
+  db.appreciations.push({ id: uuid(), eleve_id: 'e-demo', periode: month, texte: 'Yasmine progresse avec régularité et beaucoup de motivation.', created_at });
+
+  saveDb(db);
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 /** Remet la démo à zéro (utile avant de tourner une vidéo). */
 export const resetDemo = () => {
   try {

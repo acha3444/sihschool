@@ -66,7 +66,7 @@ export const ForcePasswordChangeModal: React.FC = () => {
           </p>
 
           <div className="p-3 rounded-2xl bg-[#FFF6E3] border border-[#FFE15C] text-xs text-[#8C6D00] font-baloo font-bold">
-            Pour la sécurité de votre compte sur Sihscool, veuillez définir votre mot de passe personnel définitif.
+            Pour la sécurité de votre compte sur SihSchool, veuillez définir votre mot de passe personnel définitif.
           </div>
         </div>
 

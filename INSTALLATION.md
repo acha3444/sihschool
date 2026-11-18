@@ -1,4 +1,4 @@
-# Sihscool : mémo technique
+# SihSchool : mémo technique
 
 ## Où est quoi
 - **Site en ligne** : https://app.sihschool.com (Vercel, projet `sihschool`, mis à jour à chaque envoi sur GitHub `main`)
