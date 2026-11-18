@@ -171,7 +171,7 @@ export const EleveDashboard: React.FC = () => {
           Votre fiche d'élève n'a pas encore été rattachée à ce compte de connexion. Veuillez contacter Siham sur WhatsApp pour finaliser votre accès.
         </p>
         <a
-          href="https://wa.me/33757589112"
+          href="https://wa.me/33625557532"
           target="_blank"
           rel="noopener noreferrer"
           className="btn-pill-sun"

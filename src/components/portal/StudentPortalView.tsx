@@ -57,7 +57,7 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
   const [submittingDevoirId, setSubmittingDevoirId] = useState<string | null>(null);
   const [isReRecording, setIsReRecording] = useState<Record<string, boolean>>({});
 
-  const WHATSAPP_URL = 'https://wa.me/33757589112';
+  const WHATSAPP_URL = 'https://wa.me/33625557532';
 
   // Charger les devoirs rendus pour cet élève
   const loadRendus = async () => {

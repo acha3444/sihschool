@@ -187,7 +187,7 @@ export const FamilleDashboard: React.FC = () => {
           Aucun profil d'élève n'est encore rattaché à votre compte. Veuillez contacter l'administration de l'école SihSchool pour finaliser votre inscription.
         </p>
         <a
-          href="https://wa.me/33757589112"
+          href="https://wa.me/33625557532"
           target="_blank"
           rel="noopener noreferrer"
           className="btn-pill-sun"
